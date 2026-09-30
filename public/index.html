@@ -97,7 +97,7 @@
     <div id="brand">
       <h1>Sun<b>beam</b></h1>
       <span>BY SHIMAL'E PELEG · מחולל תלת-מימד</span>
-      <span style="display:block;color:var(--accent);font-size:10px;margin-top:3px;">גרסה 223 · גיבוי אוטומטי לקובץ בכל שמירה (מופעל אוטומטית בקובץ מקומי) — כדי לא לאבד עיצובים</span>
+      <span style="display:block;color:var(--accent);font-size:10px;margin-top:3px;">גרסה 224 · גיבוי אוטומטי לקובץ בכל שמירה (מופעל אוטומטית בקובץ מקומי) — כדי לא לאבד עיצובים</span>
     </div>
 
 
@@ -261,13 +261,17 @@
 
 <div class="group">
       <h2>צבעים</h2>
+      <div class="seg" id="faceSplit" style="grid-template-columns:1fr 1fr;margin-bottom:8px;">
+        <div class="segbtn active" data-fs="same">שני צדדים זהים</div>
+        <div class="segbtn" data-fs="split">פאה רחבה ופאה צרה</div>
+      </div>
       <div class="seg" id="glassMode" style="grid-template-columns:1fr 1fr;">
-        <div class="segbtn" data-gm="counts">לפי כמות</div>
         <div class="segbtn active" data-gm="single">יחידה-יחידה</div>
+        <div class="segbtn" data-gm="counts">לפי כמות</div>
       </div>
       <!-- BY COUNT: each colour = wide face (+ optional narrow face) × quantity, auto-mixed through the whole body -->
       <div id="glassCountsPanel" style="display:none;margin-top:8px;">
-        <div style="font-size:11px;color:#8a8a92;margin-bottom:6px;">לכל צבע: פאה רחבה<span class="rectOnly">, פאה צרה</span> וכמות. הצבעים מתערבבים אוטומטית בכל הגוף — בלי שני צבעים זהים צמודים.</div>
+        <div style="font-size:11px;color:#8a8a92;margin-bottom:6px;">לכל צבע בוחרים גוון<span class="rectOnly"> לפאה הרחבה ולפאה הצרה</span> וכמות. הצבעים מתערבבים אוטומטית בכל הגוף — בלי שני צבעים זהים צמודים.</div>
         <div id="glassCountRows"></div>
         <button class="btn" id="glassAdd" style="margin-top:4px;">+ הוסף צבע</button>
         <div class="ctotal">צבועים: <b id="gctot">0</b> מתוך <span id="gcn">7</span> · השאר בצבע הראשון</div>
@@ -928,7 +932,7 @@ function buildHeights(rng){ return buildSpecs(rng).map(s=>s.h); }
 function buildGlass(n,rng,pos){
   const gc=(state.glassCounts||[]).filter(g=>(g.count|0)>0);
   if(state.glassMode!=="counts" || !gc.length){ const a=[]; for(let i=0;i<n;i++)a.push(state.glassHex); return a; }
-  const isR=(state.shape==="rect"||state.shape==="square");
+  const isR=(state.shape==="rect"||state.shape==="square") && !!state.faceSplit;
   const key=g=>g.hex+((isR && g.narrow && g.narrow.toUpperCase()!==g.hex.toUpperCase())?("|"+g.narrow):"");   // "wide|narrow"
   const items=gc.map(g=>({hex:key(g), target:Math.max(0,g.count|0), placed:0}));
   let sum=items.reduce((s,it)=>s+it.target,0);
@@ -1090,7 +1094,7 @@ function positions(n,rng){
 
 // v223: "arrange" — colour assignment optimised so the same colour never clumps with its neighbours
 function _glassSig(n,pos){
-  const g=(state.glassCounts||[]).filter(x=>(x.count|0)>0).map(x=>x.hex+"/"+(x.narrow||"")+":"+(x.count|0)).join(",")+"|s"+state.seed+"|"+state.shape;
+  const g=(state.glassCounts||[]).filter(x=>(x.count|0)>0).map(x=>x.hex+"/"+(x.narrow||"")+":"+(x.count|0)).join(",")+"|s"+state.seed+"|"+state.shape+"|f"+(state.faceSplit?1:0);
   const ps=pos.slice(0,n).map(q=>Math.round(q[0]*2)+"_"+Math.round(q[1]*2)).join(";");
   return n+"|"+(state.glassMode||"")+"|"+state.glassHex+"|"+g+"|"+ps;
 }
@@ -1236,11 +1240,11 @@ function rebuild(){
     const bivV=bivVArr[i];
     // per-unit colour override: a plain hex (whole body) OR an object {wide,narrow} (per-face)
     const _gk=String(glassArr[i]||"").split("|"), _gW=_gk[0], _gN=_gk[1]||null;   // "wide|narrow" from the count mix
-    const _isR=(state.shape==="rect"||state.shape==="square");
+    const _isR=(state.shape==="rect"||state.shape==="square") && !!state.faceSplit;   // two-face colouring only when "wide & narrow" is chosen
     const ovU = (state.glassMode!=="counts" && state.glassOverrides) ? state.glassOverrides[i] : null;   // unit painting = unit mode only
-    const baseHex = (typeof ovU==="string" && ovU) ? ovU : _gW;
+    const baseHex = (typeof ovU==="string" && ovU) ? ovU : ((ovU && typeof ovU==="object" && !_isR) ? (ovU.wide||_gW) : _gW);
     let fWide=null, fNarrow=null;
-    if(ovU && typeof ovU==="object"){ fWide=ovU.wide||baseHex; fNarrow=ovU.narrow||baseHex; }          // per-unit two-face
+    if(ovU && typeof ovU==="object" && _isR){ fWide=ovU.wide||baseHex; fNarrow=ovU.narrow||baseHex; }          // per-unit two-face
     else if(_gN && _isR){ fWide=_gW; fNarrow=_gN; }                                                     // count-mix two-face
     else if(!ovU && state.glassMode!=="counts" && state.faceMode && _isR){ fWide=state.glassWide||baseHex; fNarrow=state.glassNarrow||baseHex; } // base two-face
     _glVar=i;
@@ -2260,9 +2264,13 @@ function updateFaceUI(){
   if(state.faceMode && state.glassWide && state.glassWide.toUpperCase()!==(state.glassHex||"").toUpperCase()){   // older designs: separate wide colour → becomes the base
     state.glassHex=state.glassWide; if(state.glassWideName) state.glassName=state.glassWideName;
     {const gs=document.getElementById("glass"); if(gs) gs.value=state.glassHex; const sw=document.getElementById("glassSw"); if(sw) sw.style.background=state.glassHex;} }
-  const box=document.getElementById("faceColorBox"); if(box)box.style.display=isRect?"flex":"none";
-  const ufr=document.getElementById("unitFaceRow"); if(ufr)ufr.style.display=isRect?"flex":"none";
-  document.querySelectorAll(".rectOnly").forEach(e=>e.style.display=isRect?"":"none");
+  if(state.faceSplit===undefined) state.faceSplit=!!(state.faceMode || (state.glassCounts||[]).some(g=>g.narrow && g.narrow!==g.hex));   // older designs
+  const fsw=document.getElementById("faceSplit"); if(fsw) fsw.style.display=isRect?"grid":"none";
+  document.querySelectorAll("#faceSplit .segbtn").forEach(x=>x.classList.toggle("active",x.dataset.fs===(state.faceSplit?"split":"same")));
+  const two=isRect && !!state.faceSplit;
+  const box=document.getElementById("faceColorBox"); if(box)box.style.display=two?"flex":"none";
+  const ufr=document.getElementById("unitFaceRow"); if(ufr)ufr.style.display=two?"flex":"none";
+  document.querySelectorAll(".rectOnly").forEach(e=>e.style.display=two?"":"none");
   {const gns=document.getElementById("glassNarrow"); if(gns) gns.value=(state.faceMode&&state.glassNarrow)?state.glassNarrow:"";}
   updFaceSw();
   if(typeof buildGlassCountRows==="function") buildGlassCountRows();
@@ -2325,7 +2333,7 @@ document.getElementById("unitColorApply").onclick=()=>{
   if(idx==null){ setUnitColorStatus("בחרי יחידה קודם — לחיצה על פנדנט בתלת-מימד או בעורך הפריסה."); return; }
   if(typeof pushHistory==="function") pushHistory();
   state.glassOverrides=state.glassOverrides||{};
-  const faceOn=(state.shape==="rect"||state.shape==="square") && !!unitNarrowSel.value
+  const faceOn=(state.shape==="rect"||state.shape==="square") && !!state.faceSplit && !!unitNarrowSel.value
                && unitNarrowSel.value.toUpperCase()!==unitColorSel.value.toUpperCase();
   let msg;
   if(faceOn){
@@ -2377,7 +2385,7 @@ function buildGlassCountRows(){
     sel.onchange=()=>{const o=sel.selectedOptions[0];g.hex=o.value;g.name=o.dataset.name;sw.style.background=g.hex;framedOnce=false;rebuild();};
     sel.title="פאה רחבה";
     let nsel=null;
-    if(state.shape==="rect"||state.shape==="square"){
+    if((state.shape==="rect"||state.shape==="square") && state.faceSplit){
       nsel=document.createElement("select"); nsel.style.flex="1"; nsel.title="פאה צרה";
       const o0=document.createElement("option"); o0.value=""; o0.textContent="צרה: כמו הרחבה"; nsel.appendChild(o0);
       GLASS.forEach(gg=>{const o=document.createElement("option");o.value=gg.h;o.textContent="צרה: "+gg.c+" "+gg.n;o.dataset.name=gg.n;if(g.narrow&&gg.h===g.narrow)o.selected=true;nsel.appendChild(o);});
@@ -2400,6 +2408,11 @@ document.querySelectorAll("#glassMode .segbtn").forEach(b=>{
     if(state.glassMode==="counts" && !(state.glassCounts&&state.glassCounts.length))
       state.glassCounts=[{hex:state.glassHex,name:state.glassName,narrow:(state.faceMode?state.glassNarrow:""),count:state._count||1}];
     buildGlassCountRows();framedOnce=false;rebuild();if(typeof autoSave==="function")autoSave();};
+});
+document.querySelectorAll("#faceSplit .segbtn").forEach(b=>{
+  b.onclick=()=>{ if(typeof pushHistory==="function")pushHistory();
+    state.faceSplit=(b.dataset.fs==="split");
+    if(typeof updateFaceUI==="function")updateFaceUI(); framedOnce=false; rebuild(); if(typeof autoSave==="function")autoSave(); };
 });
 document.getElementById("glassAdd").onclick=()=>{const g0=GLASS[2]||GLASS[0];(state.glassCounts=state.glassCounts||[]).push({hex:g0.h,name:g0.n,count:1});buildGlassCountRows();framedOnce=false;rebuild();};
 buildGlassCountRows();
@@ -3424,6 +3437,7 @@ function syncUI(){
 }
 function loadState(obj){
   if(!obj||typeof obj!=="object")return false;
+  if(!("faceSplit" in obj)) state.faceSplit=undefined;   // derived from the design in updateFaceUI
   Object.keys(obj).forEach(k=>{ if(!k.startsWith("_")) state[k]=obj[k]; });
   if(!MODELS[state.model])state.model="sunbeam";
   setModelInternals(state.model);
