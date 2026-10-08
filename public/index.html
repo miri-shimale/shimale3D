@@ -97,7 +97,7 @@
     <div id="brand">
       <h1>Sun<b>beam</b></h1>
       <span>BY SHIMAL'E PELEG · מחולל תלת-מימד</span>
-      <span style="display:block;color:var(--accent);font-size:10px;margin-top:3px;">גרסה 225 · גיבוי אוטומטי לקובץ בכל שמירה (מופעל אוטומטית בקובץ מקומי) — כדי לא לאבד עיצובים</span>
+      <span style="display:block;color:var(--accent);font-size:10px;margin-top:3px;">גרסה 226 · גיבוי אוטומטי לקובץ בכל שמירה (מופעל אוטומטית בקובץ מקומי) — כדי לא לאבד עיצובים</span>
     </div>
 
 
@@ -240,9 +240,10 @@
           <option value="pyramid">פירמידה · מרכז נמוך</option>
           <option value="valley">קערה · קצוות נמוכים</option>
           <option value="cascade">מפל · אלכסון</option>
+          <option value="spiral">ספירלה · סחרור</option>
         </select>
       </label>
-      <div style="font-size:11px;color:var(--muted);margin-top:4px;">קובע את הצללית הכללית: אקראי = פיזור טבעי; פירמידה = היחידות באמצע יורדות הכי נמוך; קערה = הקצוות יורדים; מפל = ירידה אלכסונית מצד לצד.</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px;">קובע את הצללית הכללית: אקראי = פיזור טבעי; פירמידה = היחידות באמצע יורדות הכי נמוך; קערה = הקצוות יורדים; מפל = ירידה אלכסונית מצד לצד; ספירלה = הגובה יורד בהדרגה סביב המרכז, כמו גרם מדרגות לולייני.</div>
       <label class="row" style="margin-top:12px;">זווית תקרה (מעלות)
         <input type="number" id="ceilAngle" min="0" max="45" step="1" value="0" style="width:70px">
       </label>
@@ -1175,9 +1176,10 @@ function computeDrops(pos,n,rng){
     pinOuterEdges(dr);           // edges always ride the gentle top line
     return norm(dr);
   }
-  let xmn=Infinity,xmx=-Infinity;
-  for(let i=0;i<n;i++){const x=pos[i][0];xmn=Math.min(xmn,x);xmx=Math.max(xmx,x);}
-  const jit = prof==="even" ? 0.05 : 0.10;
+  let xmn=Infinity,xmx=-Infinity,zmn=Infinity,zmx=-Infinity;
+  for(let i=0;i<n;i++){const x=pos[i][0],z=pos[i][1];xmn=Math.min(xmn,x);xmx=Math.max(xmx,x);zmn=Math.min(zmn,z);zmx=Math.max(zmx,z);}
+  const scx=(xmn+xmx)/2, scz=(zmn+zmx)/2, shx=Math.max(1e-6,(xmx-xmn)/2), shz=Math.max(1e-6,(zmx-zmn)/2);
+  const jit = prof==="even" ? 0.05 : (prof==="spiral" ? 0.03 : 0.10);
   const soft = 0.6;             // <1 = gentler / less extreme silhouette
   const dr=[];
   for(let i=0;i<n;i++){
@@ -1188,6 +1190,11 @@ function computeDrops(pos,n,rng){
     if(prof==="pyramid")      d=0.5+(0.5-r)*soft;     // centre lower, but softened
     else if(prof==="valley")  d=0.5+(r-0.5)*soft;     // edges lower, softened
     else if(prof==="cascade") d=0.5+(gx-0.5)*0.85;    // diagonal waterfall
+    else if(prof==="spiral"){                         // helix: drop grows steadily with the angle around the centre (one full turn)
+      const nx=(x-scx)/shx, nz=(pos[i][1]-scz)/shz;   // normalised → the turn wraps evenly around round OR long plates
+      const a=Math.atan2(nx,-nz);                     // seam (highest ↔ deepest step) faces the back
+      d=(a+Math.PI)/(2*Math.PI);
+    }
     else                      d=0.5;                  // "even" — flat curtain
     d += (rng()-0.5)*jit;                             // organic jitter
     dr.push(Math.max(0,Math.min(1,d)));
