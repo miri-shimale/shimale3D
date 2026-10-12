@@ -97,7 +97,7 @@
     <div id="brand">
       <h1>Sun<b>beam</b></h1>
       <span>BY SHIMAL'E PELEG · מחולל תלת-מימד</span>
-      <span style="display:block;color:var(--accent);font-size:10px;margin-top:3px;">גרסה 233 · גיבוי אוטומטי לקובץ בכל שמירה (מופעל אוטומטית בקובץ מקומי) — כדי לא לאבד עיצובים</span>
+      <span style="display:block;color:var(--accent);font-size:10px;margin-top:3px;">גרסה 234 · גיבוי אוטומטי לקובץ בכל שמירה (מופעל אוטומטית בקובץ מקומי) — כדי לא לאבד עיצובים</span>
     </div>
 
 
@@ -1372,8 +1372,8 @@ function rebuild(){
 
 /* ---- ceiling plate (canopy) ---- */
 const CANOPY_TH=3;        // plate thickness from ceiling, cm (1.18")
-const CANOPY_CORNER=1.5;  // plan-view corner radius for square/rect plates, cm
-const CANOPY_EDGE=0.5;    // softened (rounded) edge on top/bottom rims, cm
+const CANOPY_CORNER=0.6;  // plan-view corner radius for square/rect plates, cm (v234: was 1.5 — too soft)
+const CANOPY_EDGE=0.3;    // softened (rounded) edge on top/bottom rims, cm (v234: was 0.5)
 // plate solid with softened edges; total height = TH, outer size exactly w×l (or diameter w)
 function plateGeo(kind,w,l,TH){
   const e=Math.min(CANOPY_EDGE, TH/2-0.05, w/4, l/4), sh=new THREE.Shape();
@@ -3269,7 +3269,7 @@ function notesLines(){
   return [
     "• All dimensions center to center.",
     "• All edges & holes deburred.",
-    (state.unit==="cm" ? "• Canopy thickness: 3 cm [1.18\"]; softened edges, corner radius 1.5 cm (square/rect)." : "• Canopy thickness: 1.18\" [30mm]; softened edges, corner radius 0.59\" [15mm] (square/rect)."),
+    (state.unit==="cm" ? "• Canopy thickness: 3 cm [1.18\"]; softened edges, corner radius 6 mm (square/rect)." : "• Canopy thickness: 1.18\" [30mm]; softened edges, corner radius 0.24\" [6mm] (square/rect)."),
     "• Finish: "+state.finishName+".",
     "• Professional electrician required.",
   ];
