@@ -97,7 +97,7 @@
     <div id="brand">
       <h1>Sun<b>beam</b></h1>
       <span>BY SHIMAL'E PELEG · מחולל תלת-מימד</span>
-      <span style="display:block;color:var(--accent);font-size:10px;margin-top:3px;">גרסה 232 · גיבוי אוטומטי לקובץ בכל שמירה (מופעל אוטומטית בקובץ מקומי) — כדי לא לאבד עיצובים</span>
+      <span style="display:block;color:var(--accent);font-size:10px;margin-top:3px;">גרסה 233 · גיבוי אוטומטי לקובץ בכל שמירה (מופעל אוטומטית בקובץ מקומי) — כדי לא לאבד עיצובים</span>
     </div>
 
 
@@ -3078,7 +3078,7 @@ function buildSpecSheetSVG(){
   s+=`<text x="60" y="322" font-size="20" letter-spacing="2" fill="#111">SPECIFICATIONS</text>`;
   s+=`<line x1="60" y1="332" x2="150" y2="332" stroke="#111" stroke-width="1"/>`;
   const per = S.perSize ? Object.entries(S.perSize).map(([k,v])=>v+" × "+k).join("   ") : "";
-  const csize = P ? (P.shape==="circle" ? ("⌀"+dnum(P.D)+IN) : (dnum(Math.max(P.W,P.L))+IN+" × "+dnum(Math.min(P.W,P.L))+IN)) : "—";
+  const csize = P ? (P.shape==="circle" ? ("⌀"+dnum(P.D)+IN_()) : (dnum(Math.max(P.W,P.L))+IN_()+" × "+dnum(Math.min(P.W,P.L))+IN_())) : "—";
   const config = P ? ("Custom layout on "+(P.shape==="circle"?"round":"rectangular")+" canopy") : "—";
   const specs=[
     ["MODEL", state.modelName],
@@ -3259,8 +3259,8 @@ function spacingLines(){
   const sp=state._derivedSpace||state.space;
   return [
     "Spacing (center-to-center):",
-    "• ≈ "+dnum(sp)+'"'+" between pendants",
-    "• Edge margin: "+dnum(state.margin)+'"',
+    "• ≈ "+dnum(sp)+IN_()+" between pendants",
+    "• Edge margin: "+dnum(state.margin)+IN_(),
     "All spacing is center to center",
     "between adjacent holes.",
   ];
@@ -3269,7 +3269,7 @@ function notesLines(){
   return [
     "• All dimensions center to center.",
     "• All edges & holes deburred.",
-    "• Canopy thickness: 1.18\" [30mm]; softened edges, corner radius 0.59\" [15mm] (square/rect).",
+    (state.unit==="cm" ? "• Canopy thickness: 3 cm [1.18\"]; softened edges, corner radius 1.5 cm (square/rect)." : "• Canopy thickness: 1.18\" [30mm]; softened edges, corner radius 0.59\" [15mm] (square/rect)."),
     "• Finish: "+state.finishName+".",
     "• Professional electrician required.",
   ];
