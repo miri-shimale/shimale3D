@@ -97,7 +97,7 @@
     <div id="brand">
       <h1>Sun<b>beam</b></h1>
       <span>BY SHIMAL'E PELEG · מחולל תלת-מימד</span>
-      <span style="display:block;color:var(--accent);font-size:10px;margin-top:3px;">גרסה 228 · גיבוי אוטומטי לקובץ בכל שמירה (מופעל אוטומטית בקובץ מקומי) — כדי לא לאבד עיצובים</span>
+      <span style="display:block;color:var(--accent);font-size:10px;margin-top:3px;">גרסה 229 · גיבוי אוטומטי לקובץ בכל שמירה (מופעל אוטומטית בקובץ מקומי) — כדי לא לאבד עיצובים</span>
     </div>
 
 
@@ -1604,6 +1604,7 @@ window.addEventListener("mouseup",e=>{
   const click = Math.hypot((e.clientX||0)-downX,(e.clientY||0)-downY) < 5;
   dragging=false;panning=false;
   if(dragUnit){dragUnit=null;el.style.cursor="";}
+  setTimeout(trackChange,0);                  // a 3D drag or click-to-place becomes an undo step
   if(!click) return;                          // was a drag/orbit, not a click
   if(e.button!==0) return;
   const p=pickUnit(e.clientX,e.clientY);
@@ -2705,36 +2706,43 @@ planCv.addEventListener("pointerdown",e=>{planCv.setPointerCapture(e.pointerId);
   else if(planSel){pushHistory();movePlanTo(planSel,p.x,p.y);markInBody(planSel);}   // two-point: place selected at target
   drawPlan();});
 planCv.addEventListener("pointermove",e=>{if(!planDrag)return;const p=planEvt(e);movePlanTo(planDrag,p.x,p.y);drawPlan();});
-planCv.addEventListener("pointerup",()=>{planDrag=null;});
-// ---- Undo history (position/height edits) ----
-let history=[];
-function pushHistory(){
-  // snapshot BOTH positions/heights AND colours so undo reverts either
-  history.push(JSON.stringify({
-    o: state.overrides||{},
-    g: state.glassOverrides||{},
-    gh: state.glassHex, gN: state.glassName,
-    fm: !!state.faceMode, gw: state.glassWide||"", gn: state.glassNarrow||"",
-    ls: state.lockSnap? state.lockSnap.map(s=>s? s.glass : null) : null
-  }));
-  if(history.length>60)history.shift();
+planCv.addEventListener("pointerup",()=>{planDrag=null; trackChange();});
+// ---- Undo history: FULL-state snapshots, one step per user action ----
+// Every change ends in autoSave() → we diff the whole design against the last committed
+// snapshot. Bursts (slider drags, 3D drags, typing) settle for 450ms and become ONE step.
+let history=[], _undoBase=null, _undoT=null, _undoBusy=false;
+function _snap(){ try{ const o=serializable(); delete o.spin; return JSON.stringify(o); }catch(e){ return null; } }   // auto-spin is view-only, not an action
+function _commitUndo(){
+  clearTimeout(_undoT); _undoT=null;
+  if(_undoBusy||_undoBase===null) return;
+  const cur=_snap(); if(cur===null||cur===_undoBase) return;
+  history.push(_undoBase); _undoBase=cur;
+  if(history.length>80) history.shift();
+  _undoUI();
 }
+function trackChange(){ if(_undoBusy||_undoBase===null) return; clearTimeout(_undoT); _undoT=setTimeout(_commitUndo,450); }
+function pushHistory(){ _commitUndo(); }          // legacy call sites: close any pending step before a new edit
+function _undoUI(){ const b=document.getElementById("undoBtn"); if(!b)return;
+  b.style.opacity=history.length?"":"0.45"; b.title=history.length?("בטל פעולה אחרונה (Ctrl+Z) · "+history.length+" צעדים"):"אין מה לבטל"; }
 function undo(){
-  if(!history.length){ return; }
-  const s=JSON.parse(history.pop());
-  if(s && s.o!==undefined){
-    state.overrides=s.o||{};
-    state.glassOverrides=s.g||{};
-    if(s.gh){ state.glassHex=s.gh; state.glassName=s.gN||state.glassName;
-      if(typeof updateGlassSw==="function")updateGlassSw();
-      const gsel=document.getElementById("glass"); if(gsel)gsel.value=s.gh; }
-    state.faceMode=!!s.fm; state.glassWide=s.gw||""; state.glassNarrow=s.gn||"";
-    if(s.ls && state.lockSnap){ state.lockSnap.forEach((snp,i)=>{ if(snp && s.ls[i]!=null) snp.glass=s.ls[i]; }); }
-  } else { state.overrides = s || {}; }     // legacy entries (positions only)
-  if(typeof updateFaceUI==="function") updateFaceUI();
-  if(typeof rebuild==="function")rebuild();
-  planSel=null; if(planEl.style.display!=="none")drawPlan();
-  if(typeof autoSave==="function")autoSave();
+  _commitUndo();                                   // a change still settling counts as the last action
+  if(!history.length){ _undoUI(); return; }
+  const prev=history.pop();
+  _undoBusy=true; const _spin=state.spin;
+  try{
+    const keepFrame=framedOnce;
+    loadState(JSON.parse(prev)); state.spin=_spin;
+    if(keepFrame){ framedOnce=true; }               // keep the camera where it is
+    if(typeof updateFaceUI==="function") updateFaceUI();
+    if(typeof updateCanopyLabels==="function") updateCanopyLabels();
+    if(typeof updateLockUI==="function") updateLockUI();
+    planSel=null; if(planEl.style.display!=="none")drawPlan();
+    const ts=document.getElementById("techSvg"); if(ts&&ts.offsetParent&&typeof techSVG==="function") ts.innerHTML=techSVG();
+  }catch(e){ console.error("undo failed",e); }
+  _undoBase=_snap(); clearTimeout(_undoT); _undoT=null;
+  setTimeout(()=>{ _undoBusy=false; },0);
+  _undoUI();
+  try{ localStorage.setItem("shimale_cfg",prev); }catch(e){}
 }
 document.getElementById("undoBtn").onclick=undo;
 // ---- lock arrangement: freeze current layout so adding a unit doesn't reshuffle the rest ----
@@ -2763,7 +2771,11 @@ function ensureKeep(){
 }
 document.getElementById("lockBtn").onclick=()=>{ state.locked?unlockArrangement():lockArrangement(); };  // manual freeze / unfreeze
 window.addEventListener("keydown",e=>{
-  if((e.ctrlKey||e.metaKey)&&(e.key==="z"||e.key==="Z")){ e.preventDefault(); undo(); }
+  if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&(e.key==="z"||e.key==="Z")){
+    const a=document.activeElement, t=a&&a.tagName, ty=a&&(a.type||"").toLowerCase();
+    if(t==="TEXTAREA"||(t==="INPUT"&&(ty==="text"||ty==="search"))) return;   // native undo inside text boxes
+    if(t==="INPUT"||t==="SELECT") a.blur();
+    e.preventDefault(); undo(); }
 });
 document.querySelectorAll("#planMode .segbtn").forEach(b=>{b.onclick=()=>{document.querySelectorAll("#planMode .segbtn").forEach(x=>x.classList.remove("active"));b.classList.add("active");planMode=b.dataset.pm;drawPlan();};});
 function openPlan(){drawPlan();planEl.style.display="flex";}
@@ -3456,7 +3468,7 @@ document.querySelectorAll("#techMode .segbtn").forEach(b=>{b.onclick=()=>{docume
 /* ================= SAVE / LOAD ================= */
 function serializable(){const o={};Object.keys(state).forEach(k=>{if(!k.startsWith("_"))o[k]=state[k];});return o;}
 let _saveT=null, _loaded=false;   // only auto-save AFTER the user interacts (keeps last real session intact)
-function autoSave(){ if(!_loaded)return; clearTimeout(_saveT);_saveT=setTimeout(()=>{try{localStorage.setItem("shimale_cfg",JSON.stringify(serializable()));}catch(e){}},300);}
+function autoSave(){ trackChange(); if(!_loaded)return; clearTimeout(_saveT);_saveT=setTimeout(()=>{try{localStorage.setItem("shimale_cfg",JSON.stringify(serializable()));}catch(e){}},300);}
 window.addEventListener("pointerdown",()=>{_loaded=true;},{once:true});
 window.addEventListener("keydown",()=>{_loaded=true;},{once:true});
 function segActive(sel,attr,val){document.querySelectorAll(sel+" .segbtn").forEach(x=>x.classList.toggle("active",x.dataset[attr]===val));}
@@ -3495,7 +3507,7 @@ function loadState(obj){
   Object.keys(obj).forEach(k=>{ if(!k.startsWith("_")) state[k]=obj[k]; });
   if(!MODELS[state.model])state.model="sunbeam";
   setModelInternals(state.model);
-  syncUI(); framedOnce=false; rebuild();
+  syncUI(); if(!_undoBusy) framedOnce=false; rebuild();
   return true;
 }
 function getPresets(){try{return JSON.parse(localStorage.getItem("shimale_presets")||"{}");}catch(e){return {};}}
@@ -3587,6 +3599,7 @@ resize();
 let _lastSession=null;
 try{ _lastSession=localStorage.getItem("shimale_cfg"); }catch(e){}
 rebuild(); refreshUnitInputs();
+setTimeout(()=>{ _undoBase=_snap(); history=[]; _undoUI(); },1200);   // undo baseline = the design as opened
 const _rl=document.getElementById("restoreLast");
 if(_lastSession && _rl){ _rl.style.display="block"; }
 if(_rl) _rl.onclick=()=>{ try{ if(_lastSession) loadState(JSON.parse(_lastSession)); }catch(e){} _rl.style.display="none"; setView("three"); recenter(); };
