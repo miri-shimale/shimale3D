@@ -97,7 +97,7 @@
     <div id="brand">
       <h1>Sun<b>beam</b></h1>
       <span>BY SHIMAL'E PELEG · מחולל תלת-מימד</span>
-      <span style="display:block;color:var(--accent);font-size:10px;margin-top:3px;">גרסה 231 · גיבוי אוטומטי לקובץ בכל שמירה (מופעל אוטומטית בקובץ מקומי) — כדי לא לאבד עיצובים</span>
+      <span style="display:block;color:var(--accent);font-size:10px;margin-top:3px;">גרסה 232 · גיבוי אוטומטי לקובץ בכל שמירה (מופעל אוטומטית בקובץ מקומי) — כדי לא לאבד עיצובים</span>
     </div>
 
 
@@ -423,6 +423,7 @@
       </div>
     </div>
     <div id="rec">מקליט…</div>
+    <div id="unitTip" style="display:none;position:fixed;z-index:60;pointer-events:none;background:rgba(18,18,22,.94);color:#eee;border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:7px 10px;font-size:12px;line-height:1.55;box-shadow:0 4px 14px rgba(0,0,0,.35);direction:rtl;white-space:nowrap;"></div>
     <div id="selhint" style="display: none;">✦ פנדנט נבחר — לחצי על היעד להזזתו · Esc לביטול</div>
     <div id="hint">לתיקון מיקומים: לחצי "⬒ מבט על", בחרי פנדנט ולחצי על היעד (או גררי) · גלגלת = זום · ימני = הזזת תצוגה</div>
     <div id="techEditor">
@@ -1560,7 +1561,8 @@ function updateSelRing(){
   selRing.position.set(selUnit.position.x, selUnit.position.y+1.6, selUnit.position.z);
   selRing.visible=true;
 }
-function selectUnit(u){selUnit=u;updateSelRing();showSelHint(true);mirrorToPlan(u);}
+function selectUnit(u){selUnit=u;updateSelRing();showSelHint(true);mirrorToPlan(u);
+  { const st=document.getElementById("unitColorStatus"); if(st&&u) st.innerHTML=unitColorHTML(u); }}
 function deselect(){selUnit=null;selRing.visible=false;showSelHint(false);mirrorToPlan(null);}
 // reflect a 3D selection into the plan-editor window (bidirectional highlight)
 function mirrorToPlan(u){
@@ -1615,11 +1617,29 @@ window.addEventListener("mouseup",e=>{
   else if(selUnit){ placeSelectedAt(e.clientX,e.clientY); }
 });
 window.addEventListener("keydown",e=>{if(e.key==="Escape")deselect();});
-el.addEventListener("mousemove",e=>{ // hover cursor hint
-  if(dragUnit||dragging)return;
+// ---- unit colour info (hover tooltip + selection status) ----
+function glassInfo(hx){ const H=(hx||"").toUpperCase(); const g=(typeof GLASS!=="undefined"?GLASS:[]).find(g=>(g.h||"").toUpperCase()===H);
+  return g ? {code:g.c||"", name:g.n, hex:g.h} : {code:"", name:(H===(state.glassHex||"").toUpperCase()?(state.glassName||hx):hx), hex:hx}; }
+function unitColorHTML(u){ if(!u||!u.userData) return "";
+  const d=u.userData, sw=h=>'<span style="display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:-1px;margin-left:5px;border:1px solid rgba(255,255,255,.35);background:'+h+'"></span>';
+  const lab=gi=>sw(gi.hex)+'<b dir="ltr" style="unicode-bidi:isolate">'+(gi.code?gi.code+' ':'')+gi.name+'</b>';
+  const ov=state.glassOverrides?state.glassOverrides[d.index]:undefined;
+  let html='יחידה <b>#'+(d.index+1)+'</b>'+(ov!==undefined?' · <span style="color:#e2b04a">צבועה ידנית</span>':'')+'<br>';
+  if(d.glassN && d.glassW && d.glassN.toUpperCase()!==d.glassW.toUpperCase())
+    html+='פאה רחבה: '+lab(glassInfo(d.glassW))+'<br>פאה צרה: '+lab(glassInfo(d.glassN));
+  else html+='צבע: '+lab(glassInfo(d.glassW||d.glass));
+  return html; }
+function showUnitTip(u,x,y){ const t=document.getElementById("unitTip"); if(!t)return;
+  if(!u){ t.style.display="none"; return; }
+  t.innerHTML=unitColorHTML(u); t.style.display="block";
+  const w=t.offsetWidth, h=t.offsetHeight; t.style.left=Math.max(6,Math.min(innerWidth-w-6,x+14))+"px"; t.style.top=Math.max(6,Math.min(innerHeight-h-6,y+16))+"px"; }
+el.addEventListener("mousemove",e=>{ // hover cursor hint + colour tooltip
+  if(dragUnit||dragging){ showUnitTip(null); return; }
   const over=pickUnit(e.clientX,e.clientY);
   el.style.cursor = over ? "pointer" : (selUnit ? "crosshair" : "default");
+  showUnitTip(over?over.unit:null, e.clientX, e.clientY);
 });
+el.addEventListener("mouseleave",()=>showUnitTip(null));
 window.addEventListener("mousemove",e=>{
   if(dragUnit){
     // smooth 1:1 tracking — vertical mouse = raise/lower drop, horizontal = slide sideways (zoom-independent)
@@ -2714,7 +2734,8 @@ planCv.addEventListener("pointerdown",e=>{planCv.setPointerCapture(e.pointerId);
   if(u){pushHistory();planDrag=u;planSel=u;markInBody(u);}
   else if(planSel){pushHistory();movePlanTo(planSel,p.x,p.y);markInBody(planSel);}   // two-point: place selected at target
   drawPlan();});
-planCv.addEventListener("pointermove",e=>{if(!planDrag)return;const p=planEvt(e);movePlanTo(planDrag,p.x,p.y);drawPlan();});
+planCv.addEventListener("pointermove",e=>{if(!planDrag){ const p=planEvt(e), u=planPick(p.x,p.y); showUnitTip(u,e.clientX,e.clientY); return; } showUnitTip(null); const p=planEvt(e);movePlanTo(planDrag,p.x,p.y);drawPlan();});
+planCv.addEventListener("pointerleave",()=>showUnitTip(null));
 planCv.addEventListener("pointerup",()=>{planDrag=null; trackChange(); if(typeof updateReadout==="function")updateReadout();});
 // ---- Undo history: FULL-state snapshots, one step per user action ----
 // Every change ends in autoSave() → we diff the whole design against the last committed
