@@ -97,7 +97,7 @@
     <div id="brand">
       <h1>Sun<b>beam</b></h1>
       <span>BY SHIMAL'E PELEG · מחולל תלת-מימד</span>
-      <span style="display:block;color:var(--accent);font-size:10px;margin-top:3px;">גרסה 230 · גיבוי אוטומטי לקובץ בכל שמירה (מופעל אוטומטית בקובץ מקומי) — כדי לא לאבד עיצובים</span>
+      <span style="display:block;color:var(--accent);font-size:10px;margin-top:3px;">גרסה 231 · גיבוי אוטומטי לקובץ בכל שמירה (מופעל אוטומטית בקובץ מקומי) — כדי לא לאבד עיצובים</span>
     </div>
 
 
@@ -232,7 +232,8 @@
       <label class="row" style="margin-top:8px;"><span id="minHLbl">גובה מינימלי · לא חובה (ס"מ)</span>
         <input type="number" id="minH" min="0" max="800" step="1" value="60" style="width:80px">
       </label>
-      <div style="font-size:11px;color:var(--muted);margin-top:4px;">נמדד מהתקרה עד <b>ראש</b> הפנדנט (תחילת התלייה). הפנדנטים מתפרסים בין המינימלי (הגבוה) למקסימלי (הנמוך).</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px;"><b>מינימלי</b> = מהתקרה עד <b>ראש</b> הפנדנט הגבוה ביותר. <b>מקסימלי</b> = מהתקרה עד <b>תחתית</b> הפנדנט הנמוך ביותר (האורך הכולל).</div>
+      <div id="dropActual" style="display:none;font-size:12px;line-height:1.5;margin-top:8px;padding:8px 10px;border-radius:8px;background:rgba(214,160,40,.12);border:1px solid rgba(214,160,40,.55);"></div>
       <label class="row" style="margin-top:12px;">פרופיל תלייה אנכי
         <select id="profile" style="width:150px">
           <option value="random">אקראי · אורגני</option>
@@ -1499,7 +1500,7 @@ function glassDesc(){
 function specLines(){
   const s=state._summary||{};
   const per = s.perSize ? Object.entries(s.perSize).map(([k,v])=>v+"× "+k).join(" · ") : "";
-  const len = (s.minTotal===s.maxTotal) ? fmt(s.minTotal||0) : fmt(s.minTotal||0)+" – "+fmt(s.maxTotal||0);
+  const _A=actualDrops(), len = fmt(_A.top)+" – "+fmt(_A.bot)+" (ראש עליון – תחתית נמוכה)";
   return [
     ["דגם",state.modelName],
     ["כמות פנדנטים", (s.count||0)+""],
@@ -1516,6 +1517,7 @@ function updateReadout(){
   document.getElementById("readout").innerHTML=
     specLines().map(([k,v])=>`${k}: <b>${v}</b>`).join("<br>");
   if(typeof refreshGlassTotals==="function")refreshGlassTotals();
+  if(typeof updateDropActual==="function")updateDropActual();
   if(typeof maybeAutofill==="function")maybeAutofill();   // auto-fill price/weight from the loaded table when the config changes
 }
 
@@ -1605,7 +1607,7 @@ window.addEventListener("mouseup",e=>{
   const click = Math.hypot((e.clientX||0)-downX,(e.clientY||0)-downY) < 5;
   dragging=false;panning=false;
   if(dragUnit){dragUnit=null;el.style.cursor="";}
-  setTimeout(trackChange,0);                  // a 3D drag or click-to-place becomes an undo step
+  setTimeout(()=>{ trackChange(); if(typeof updateReadout==="function")updateReadout(); },0);   // a 3D drag or click-to-place becomes an undo step
   if(!click) return;                          // was a drag/orbit, not a click
   if(e.button!==0) return;
   const p=pickUnit(e.clientX,e.clientY);
@@ -1744,7 +1746,7 @@ function bodyDims(){
 function captionLines(){
   const s=state._summary||{};
   const per = s.perSize ? Object.entries(s.perSize).map(([k,v])=>v+"× "+k).join("   ") : "";
-  const len = (s.minTotal===s.maxTotal) ? fmtEn(s.minTotal||0) : fmtEn(s.minTotal||0)+" – "+fmtEn(s.maxTotal||0);
+  const _A=actualDrops(), len = fmtEn(_A.top)+" – "+fmtEn(_A.bot);
   let plate="None";
   if(state.canopy==="circle")plate="Round ⌀"+fmtEn(state.canopyW);
   else if(state.canopy==="square")plate="Square "+fmtEn(state.canopyW);
@@ -2612,8 +2614,8 @@ function buildQuoteDescription(){
     "Base size: "+plate,
     "Base finish: "+(state.finishName||""),
     "Glass colors: "+glass,
-    "Min drop from ceiling: "+fmtEn(state.minDrop||0),
-    "Max drop from ceiling: "+fmtEn(state.maxDrop||0)
+    "Min drop from ceiling: "+fmtEn(actualDrops().top),
+    "Max drop from ceiling (overall): "+fmtEn(actualDrops().bot)
   ].join("\n");
 }
 document.getElementById("copyQuote").onclick=()=>{
@@ -2713,7 +2715,7 @@ planCv.addEventListener("pointerdown",e=>{planCv.setPointerCapture(e.pointerId);
   else if(planSel){pushHistory();movePlanTo(planSel,p.x,p.y);markInBody(planSel);}   // two-point: place selected at target
   drawPlan();});
 planCv.addEventListener("pointermove",e=>{if(!planDrag)return;const p=planEvt(e);movePlanTo(planDrag,p.x,p.y);drawPlan();});
-planCv.addEventListener("pointerup",()=>{planDrag=null; trackChange();});
+planCv.addEventListener("pointerup",()=>{planDrag=null; trackChange(); if(typeof updateReadout==="function")updateReadout();});
 // ---- Undo history: FULL-state snapshots, one step per user action ----
 // Every change ends in autoSave() → we diff the whole design against the last committed
 // snapshot. Bursts (slider drags, 3D drags, typing) settle for 450ms and become ONE step.
@@ -2964,9 +2966,9 @@ function buildElevationSVG(){
   us.forEach(u=>{ xMin=Math.min(xMin,AX(u)-u.w/2); xMax=Math.max(xMax,AX(u)+u.w/2); topMin=Math.min(topMin,u.top); botMax=Math.max(botMax,u.top+u.h); });
   if(topMin===Infinity)topMin=0;
   const topMaxA=Math.max.apply(null,us.map(u=>u.top)), hMaxE=Math.max.apply(null,us.map(u=>u.h));
-  const aSpanE=Math.max(1e-6, topMaxA-topMin), tHiE=state.minDrop, tLoE=Math.max(state.minDrop, state.maxDrop-hMaxE);
-  const remapTop=t=> tHiE + ((t-topMin)/aSpanE)*(tLoE-tHiE);   // draw pendants EXACTLY within the entered min→max
-  const overall=Math.max(state.maxDrop||0,1), field=Math.max(botMax-topMin,1);
+  const remapTop=t=>t;   // v231: draw pendants at their TRUE (as-modelled) drops — manual edits included
+  const _DA=actualDrops(), dMin=_DA.top, dMax=_DA.bot;
+  const overall=Math.max(dMax||0,1), field=Math.max(botMax-topMin,1);
   const drawTop=140, drawBot=H-200, drawH=drawBot-drawTop, spanX=Math.max(xMax-xMin,1);
   const sc=Math.min(drawH/overall, (W-560)/spanX);
   const cx=70+(W-560)/2;
@@ -2990,10 +2992,10 @@ function buildElevationSVG(){
   s+=dimH(cx-pWpx/2,cx+pWpx/2, barTop-16, (P.shape==="circle"?"⌀":"")+dnum(plateW)+" "+uL);
   // three vertical dimensions on the right — EXACTLY the min/max the user entered (drawing is normalized to this range)
   const rx0=Math.max(X(xMax),cx+pWpx/2);
-  const yTopM=Y(state.minDrop), yBotM=Y(state.maxDrop);
-  s+=dimV(drawTop, yTopM, rx0+36, dnum(state.minDrop)+" "+uL);
-  s+=dimV(yTopM, yBotM, rx0+86, dnum(state.maxDrop-state.minDrop)+" "+uL);
-  s+=dimV(drawTop, yBotM, rx0+140, dnum(state.maxDrop)+" "+uL);
+  const yTopM=Y(dMin), yBotM=Y(dMax);
+  s+=dimV(drawTop, yTopM, rx0+36, dnum(dMin)+" "+uL);
+  s+=dimV(yTopM, yBotM, rx0+86, dnum(dMax-dMin)+" "+uL);
+  s+=dimV(drawTop, yBotM, rx0+140, dnum(dMax)+" "+uL);
   // compact info block, bottom-left — safely below the drawing and left of the title block
   const capX=72; let capY=drawBot+42;
   if(state.customer){ s+=`<text x="${capX}" y="${capY}" font-size="11" font-weight="bold" fill="#222">Client: ${state.customer}${state.location?" · "+state.location:""}</text>`; capY+=15; }
@@ -3005,6 +3007,38 @@ function buildElevationSVG(){
   s+=`</svg>`; return s;
 }
 /* ===== FULL SPEC SHEET (one-page technical + specification) ===== */
+// ACTUAL hanging range from the live model (includes every manual drag): highest glass top & deepest bottom
+function actualDrops(){ let top=Infinity, bot=0, n=0;
+  fixtures.traverse(o=>{ if(o.userData&&o.userData.index!==undefined&&o.userData.pickable){ const t=-o.position.y, h=o.userData.h||0; n++;
+    if(t<top)top=t; if(t+h>bot)bot=t+h; } });
+  if(!n) return {top:state.minDrop||0, bot:state.maxDrop||0, n:0, changed:false};
+  const changed = Math.abs(top-(state.minDrop||0))>0.5 || Math.abs(bot-(state.maxDrop||0))>0.5;
+  return {top, bot, n, changed};
+}
+function updateDropActual(){
+  const el=document.getElementById("dropActual"); if(!el) return;
+  const A=actualDrops(); if(!A.n||!A.changed){ el.style.display="none"; return; }
+  const u=HU(), f=v=>(v/u.f).toFixed(u.dec)+" "+u.name;
+  const dT=A.top-(state.minDrop||0), dB=A.bot-(state.maxDrop||0), sg=v=>(v>0?"+":"")+(v/u.f).toFixed(u.dec);
+  el.innerHTML='⚠ <b>הגבהים בפועל שונים ממה שהוגדר</b> (בגלל הזזה ידנית):<br>'
+    +'עליון בפועל: <b>'+f(A.top)+'</b>'+(Math.abs(dT)>0.5?' ('+sg(dT)+')':'')+' · '
+    +'תחתון בפועל: <b>'+f(A.bot)+'</b>'+(Math.abs(dB)>0.5?' ('+sg(dB)+')':'')
+    +'<br><span style="color:var(--muted)">המפרט, השרטוטים והתיאור משתמשים בערכים בפועל.</span>'
+    +'<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">'
+    +'<button class="btn" id="dropAdopt" style="flex:1;min-width:120px;">✓ עדכן את השדות לבפועל</button>'
+    +'<button class="btn" id="dropReset" style="flex:1;min-width:120px;">↺ החזר לטווח שהוגדר</button></div>';
+  el.style.display="block";
+  document.getElementById("dropAdopt").onclick=()=>{   // fields take the actual values; every pendant stays EXACTLY where it is
+    const cur={}; fixtures.traverse(o=>{ if(o.userData&&o.userData.index!==undefined&&o.userData.pickable) cur[o.userData.index]=-o.position.y; });
+    const B=actualDrops(); state.minDrop=Math.round(B.top*10)/10; state.maxDrop=Math.round(B.bot*10)/10; refreshHeightInputs();
+    state.overrides=state.overrides||{}; for(const k in state.overrides){ if(state.overrides[k]) state.overrides[k].dy=0; }
+    _undoBusy=true; rebuild();                                   // new base drops for the new range…
+    fixtures.traverse(o=>{ if(o.userData&&o.userData.index!==undefined&&o.userData.pickable){ const i=o.userData.index; if(cur[i]==null)return;
+      const d=(-o.position.y)-cur[i]; if(Math.abs(d)>0.05){ const ov=state.overrides[i]||(state.overrides[i]={dx:0,dz:0}); ov.dy=(ov.dy||0)-d; } } });
+    _undoBusy=false; rebuild(); if(typeof autoSave==="function")autoSave(); };   // …then re-apply the offsets so nothing moves
+  document.getElementById("dropReset").onclick=()=>{ for(const k in state.overrides){ if(state.overrides[k]) state.overrides[k].dy=0; }
+    rebuild(); if(typeof autoSave==="function")autoSave(); };
+}
 function specFixtures(){ const us=[]; fixtures.traverse(o=>{ if(o.userData&&o.userData.index!==undefined&&o.userData.pickable){ us.push({x:o.position.x,z:o.position.z,top:-o.position.y,h:o.userData.h||0,w:o.userData.w||state.cw}); } }); return us; }
 function buildSpecSheetSVG(){
   const W=1240,H=1604, P=plateDims(), S=state._summary||{}, q=state._count||0, us=specFixtures();
@@ -3085,9 +3119,9 @@ function drawElevationBlock(bx,by,bw,bh,us,P){
   if(topMin===Infinity)topMin=0;
   // REMAP each pendant's drop so the drawing spans EXACTLY the entered min→max (highest top=minDrop, deepest bottom=maxDrop)
   const topMaxA=Math.max.apply(null,us.map(u=>u.top)), hMax=Math.max.apply(null,us.map(u=>u.h));
-  const aSpanE=Math.max(1e-6, topMaxA-topMin), tHiE=state.minDrop, tLoE=Math.max(state.minDrop, state.maxDrop-hMax);
-  const remapTop=t=> tHiE + ((t-topMin)/aSpanE)*(tLoE-tHiE);
-  const overall=Math.max(state.maxDrop||0,1), spanX=Math.max(xMax-xMin,1);
+  const remapTop=t=>t;   // v231: TRUE drops
+  const _DA=actualDrops(), dMin=_DA.top, dMax=_DA.bot;
+  const overall=Math.max(dMax||0,1), spanX=Math.max(xMax-xMin,1);
   const padT=52,padB=46,padR=130,padL=26, dh=bh-padT-padB, dw=bw-padR-padL;
   const sc=Math.min(dh/overall, dw/spanX);
   const cx=bx+padL+dw/2, topY=by+padT;
@@ -3105,10 +3139,10 @@ function drawElevationBlock(bx,by,bw,bh,us,P){
     g+=`<line x1="${hi.ex}" y1="${hi.ey}" x2="${hi.ex+(right?40:-40)}" y2="${hi.ey}" stroke="#333" stroke-width="0.6" stroke-dasharray="4 3"/>`;
     g+=`<text x="${hi.ex+(right?12:-62)}" y="${hi.ey-8}" font-size="14" fill="#111">${trueAng}°→${dirWord}</text>`; }
   // three vertical dimensions — EXACTLY the min/max the user entered (drawing is normalized to this range)
-  const rx0=Math.max(X(xMax),cx+pWpx/2), yT=Y(state.minDrop), y2=Y(state.maxDrop);
-  g+=dimV(topY,yT,rx0+30,dnum(state.minDrop)+IN_());
-  g+=dimV(yT,y2,rx0+66,dnum(state.maxDrop-state.minDrop)+IN_());
-  g+=dimV(topY,y2,rx0+104,dnum(state.maxDrop)+IN_());
+  const rx0=Math.max(X(xMax),cx+pWpx/2), yT=Y(dMin), y2=Y(dMax);
+  g+=dimV(topY,yT,rx0+30,dnum(dMin)+IN_());
+  g+=dimV(yT,y2,rx0+66,dnum(dMax-dMin)+IN_());
+  g+=dimV(topY,y2,rx0+104,dnum(dMax)+IN_());
   // ---- hanging-unit detail (top-left): show EVERY distinct pendant size present, each with its own H ----
   if(us.length){
     const sizeName=(hh)=>{ const z=(typeof SIZES!=="undefined"?SIZES:[]).find(q=>Math.abs((q.h||0)-hh)<0.1); return z?z.name:""; };
