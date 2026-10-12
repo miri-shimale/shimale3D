@@ -97,7 +97,7 @@
     <div id="brand">
       <h1>Sun<b>beam</b></h1>
       <span>BY SHIMAL'E PELEG · מחולל תלת-מימד</span>
-      <span style="display:block;color:var(--accent);font-size:10px;margin-top:3px;">גרסה 229 · גיבוי אוטומטי לקובץ בכל שמירה (מופעל אוטומטית בקובץ מקומי) — כדי לא לאבד עיצובים</span>
+      <span style="display:block;color:var(--accent);font-size:10px;margin-top:3px;">גרסה 230 · גיבוי אוטומטי לקובץ בכל שמירה (מופעל אוטומטית בקובץ מקומי) — כדי לא לאבד עיצובים</span>
     </div>
 
 
@@ -290,7 +290,9 @@
           <select id="glassNarrow" style="flex:1;"><option value="" data-name="">— כמו הפאה הרחבה —</option></select>
           <span style="font-size:11px;color:var(--muted);white-space:nowrap;">פאה צרה</span>
         </div>
-        <div id="unitColorBox" style="margin-top:10px;padding:8px;border:1px dashed var(--line);border-radius:8px;">
+      </div>
+      <!-- per-unit painting — works on top of BOTH modes (unit-by-unit base, or the by-count mix) -->
+      <div id="unitColorBox" style="margin-top:10px;padding:8px;border:1px dashed var(--line);border-radius:8px;">
           <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">צביעת יחידה</div>
           <div style="font-size:11px;color:#8a8a92;margin-bottom:6px;">1) לחיצה על פנדנט (בתלת-מימד או בעורך הפריסה). 2) בחירת צבע. 3) "צבע":</div>
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
@@ -308,7 +310,6 @@
           <button class="btn" id="unitColorClearAll" style="margin-top:4px;">🧹 בטל את כל צביעות היחידות</button>
           <div id="unitColorStatus" style="font-size:11px;color:var(--accent);margin-top:6px;"></div>
         </div>
-      </div>
       <!-- legacy controls kept hidden so older code paths & saved designs keep working -->
       <div style="display:none;">
         <input type="checkbox" id="faceMode"><div id="facePanel"></div>
@@ -1279,7 +1280,7 @@ function rebuild(){
     // per-unit colour override: a plain hex (whole body) OR an object {wide,narrow} (per-face)
     const _gk=String(glassArr[i]||"").split("|"), _gW=_gk[0], _gN=_gk[1]||null;   // "wide|narrow" from the count mix
     const _isR=(state.shape==="rect"||state.shape==="square") && !!state.faceSplit;   // two-face colouring only when "wide & narrow" is chosen
-    const ovU = (state.glassMode!=="counts" && state.glassOverrides) ? state.glassOverrides[i] : null;   // unit painting = unit mode only
+    const ovU = state.glassOverrides ? state.glassOverrides[i] : null;   // unit painting applies in BOTH modes (on top of the count mix)
     const baseHex = (typeof ovU==="string" && ovU) ? ovU : ((ovU && typeof ovU==="object" && !_isR) ? (ovU.wide||_gW) : _gW);
     let fWide=null, fNarrow=null;
     if(ovU && typeof ovU==="object" && _isR){ fWide=ovU.wide||baseHex; fNarrow=ovU.narrow||baseHex; }          // per-unit two-face
@@ -2410,7 +2411,7 @@ document.getElementById("unitColorClearOne").onclick=()=>{
   const had = state.glassOverrides && state.glassOverrides[idx]!==undefined;
   if(typeof pushHistory==="function") pushHistory();
   if(state.glassOverrides) delete state.glassOverrides[idx];
-  if(state.lockSnap && state.lockSnap[idx]) state.lockSnap[idx].glass=state.glassHex;  // revert baked colour if locked
+  if(state.glassMode!=="counts" && state.lockSnap && state.lockSnap[idx]) state.lockSnap[idx].glass=state.glassHex;  // unit mode: revert baked colour if locked
   rebuild(); reselectIndex(idx);
   setUnitColorStatus(had ? ("הצביעה האישית של יחידה #"+(idx+1)+" בוטלה.")
                          : ("ליחידה #"+(idx+1)+" אין צביעה אישית — הצבע מגיע מהתמהיל הכללי (כמויות/צבע בסיס)."));
@@ -2457,7 +2458,13 @@ function buildGlassCountRows(){
 }
 document.querySelectorAll("#glassMode .segbtn").forEach(b=>{
   b.onclick=()=>{document.querySelectorAll("#glassMode .segbtn").forEach(x=>x.classList.remove("active"));
-    b.classList.add("active");state.glassMode=b.dataset.gm;
+    const fromCounts=state.glassMode==="counts", to=b.dataset.gm;
+    if(fromCounts && to==="single" && confirm("לשמור את הצבעים הנוכחיים של כל היחידות?\n\nאישור = כל יחידה שומרת את הצבע שקיבלה מהתמהיל (ואפשר לשנות כל אחת בנפרד).\nביטול = כל היחידות חוזרות לצבע הבסיס (התמהיל נשמר אם תחזרי ל\"לפי כמות\")."))
+    { state.glassOverrides=state.glassOverrides||{};
+      fixtures.traverse(o=>{ if(o.userData&&o.userData.pickable&&o.userData.index!==undefined){ const k=o.userData.index;
+        if(state.glassOverrides[k]!==undefined) return;
+        state.glassOverrides[k]= o.userData.glassN ? {wide:o.userData.glassW||o.userData.glass, narrow:o.userData.glassN} : o.userData.glass; } }); }
+    b.classList.add("active");state.glassMode=to;
     document.getElementById("glassSinglePanel").style.display=state.glassMode==="single"?"block":"none";
     document.getElementById("glassCountsPanel").style.display=state.glassMode==="counts"?"block":"none";
     if(state.glassMode==="counts" && !(state.glassCounts&&state.glassCounts.length))
