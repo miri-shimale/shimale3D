@@ -97,7 +97,7 @@
     <div id="brand">
       <h1>Sun<b>beam</b></h1>
       <span>BY SHIMAL'E PELEG · מחולל תלת-מימד</span>
-      <span style="display:block;color:var(--accent);font-size:10px;margin-top:3px;">גרסה 234 · גיבוי אוטומטי לקובץ בכל שמירה (מופעל אוטומטית בקובץ מקומי) — כדי לא לאבד עיצובים</span>
+      <span style="display:block;color:var(--accent);font-size:10px;margin-top:3px;">גרסה 235 · גיבוי אוטומטי לקובץ בכל שמירה (מופעל אוטומטית בקובץ מקומי) — כדי לא לאבד עיצובים</span>
     </div>
 
 
@@ -401,6 +401,7 @@
       <div class="chip" id="planBtn">⬒ עריכת פריסה</div>
       <div class="chip" id="undoBtn" title="בטל פעולה אחרונה (Ctrl+Z)">↶ בטל</div>
       <div class="chip" id="lockBtn" title="הקפא את הסידור כך שהוספת יחידה לא תזיז את הקיימות">🔒 נעל סידור</div>
+      <div class="chip" id="renderBtn" title="תמונה באיכות גבוהה בתוך חלל — להורדה ושליחה ללקוח" style="border-color:var(--accent);color:var(--accent);">📸 רינדור</div>
       <div class="chip" id="spin">⟳ סיבוב</div>
       <div class="chip" id="reset">מרכוז</div>
       <div class="chip" id="restoreLast" style="display: block; border-color: var(--accent); color: var(--accent);">↩ שחזר סידור אחרון</div>
@@ -549,7 +550,7 @@ const MODELS = {
   tulips:{ name:"Tulips", cw:7.5, cd:2.3, shape:"ellipse", top:"knob", bulb:"G4 2W · 3000K",
     defaultSize:"one", counts:{one:30},
     sizes:[{key:"one",name:"Standard",h:8,tag:null}] },
-  gleams:{ name:"Gleams", cw:2, cd:4.5, shape:"rect", top:"knob", bulb:"G4 2W · 3000K",
+  gleams:{ name:"Gleams", cw:2, cd:4.5, shape:"rect", top:"none", bulb:"G4 2W · 3000K",
     defaultSize:"one", counts:{one:24},
     sizes:[{key:"one",name:"Standard",h:12.5,tag:null}] },
   gleamsMedium:{ name:"Gleams Medium", cw:6, cd:9, shape:"rect", top:"knob", bulb:"GU10 7W · 570lm · 3000K · Dimmable",
@@ -559,7 +560,7 @@ const MODELS = {
     defaultSize:"sunbeam", counts:{sunbeam:5, gleamsSmall:12, gleamsMed:0},
     sizes:[
       {key:"sunbeam",name:"Sunbeam",w:7,cd:5,h:30,top:"cross",tag:null},
-      {key:"gleamsSmall",name:"Gleams",w:2,cd:4.5,h:12.5,top:"knob",tag:null},
+      {key:"gleamsSmall",name:"Gleams",w:2,cd:4.5,h:12.5,top:"none",tag:null},
       {key:"gleamsMed",name:"Gleams Medium",w:6,cd:9,h:22,top:"knob",tag:"6×9"}
     ] },
   snowflakes:{ name:"Snow Flakes", cw:5.2, cd:5.2, shape:"blob", top:"knob", bulb:"G4 2W · 3000K",
@@ -928,6 +929,8 @@ function buildFixture(height, glowColor, glowInt, glassHex, wOverride, bivVarian
     cap.position.y=0.14; cap.userData.export=true; g.add(cap);
     const hub=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.16,0.5,14),metal);
     hub.position.y=0.42; hub.userData.export=true; g.add(hub);
+  }else if(TOP==="none"){
+    // Gleams: no visible fitting above the glass — the cable enters the tile directly (as in the real piece)
   }else{
     // NO cap band — clean glass to the top, a single round knob sits directly on it (Tulips)
     const ring=new THREE.Mesh(new THREE.CylinderGeometry(0.8,0.8,0.35,20),metal);
@@ -2615,6 +2618,112 @@ document.getElementById("spin").onclick=function(){
   if(state.spin)document.querySelectorAll('#hud [data-view]').forEach(c=>c.classList.remove('on'));
 };
 document.getElementById("reset").onclick=()=>{setView("three");recenter();};
+
+/* ================= PHOTO RENDER (v235) =================
+   One-click high-quality still: the fixture in a room (ceiling, back wall, floor), filmic tone mapping
+   so lit glass keeps its colour & texture instead of clipping to white, warm light pools, a soft glow
+   halo around lit glass and gentle vignette. The live 3D view is untouched (fast for working). */
+let _renderRoom="dark";
+function renderPhoto(room){
+  room=room||_renderRoom; _renderRoom=room;
+  const dark=(room==="dark");
+  // --- bounds of the fixture
+  const box=new THREE.Box3().setFromObject(fixtures);
+  const ctr=new THREE.Vector3(); box.getCenter(ctr); const sz=new THREE.Vector3(); box.getSize(sz);
+  const ext=Math.max(sz.x,sz.z,40);
+  // --- save live state
+  const sv={tm:renderer.toneMapping, te:renderer.toneMappingExposure, bg:scene.background,
+            amb:amb.intensity, key:key.intensity, fill:fill.intensity, pr:renderer.getPixelRatio(), size:new THREE.Vector2()};
+  renderer.getSize(sv.size);
+  // --- room (placed relative to where the camera looks from, so the wall is always BEHIND the fixture)
+  const roomG=new THREE.Group();
+  const C=dark? {wall:0x1f1c1a, floor:0x161413, ceil:0x2a2725} : {wall:0xe8e2d8, floor:0xb9a68e, ceil:0xf3f0ea};
+  const mk=(c,r)=>new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:0});
+  const ceilY=(box.max.y>0?box.max.y:0)+0.2;
+  const floorY=Math.min(box.min.y-90, -240);
+  const camDir=new THREE.Vector3(camera.position.x-ctr.x,0,camera.position.z-ctr.z); if(camDir.lengthSq()<1e-6)camDir.set(0,0,1); camDir.normalize();
+  const wallDist=ext*1.2+90;
+  const BIG=6000;
+  const ceil=new THREE.Mesh(new THREE.PlaneGeometry(BIG,BIG),mk(C.ceil,0.95)); ceil.rotation.x=Math.PI/2; ceil.position.y=ceilY; roomG.add(ceil);
+  const floor=new THREE.Mesh(new THREE.PlaneGeometry(BIG,BIG),mk(C.floor,dark?0.55:0.7)); floor.rotation.x=-Math.PI/2; floor.position.y=floorY; roomG.add(floor);
+  const wall=new THREE.Mesh(new THREE.PlaneGeometry(BIG,BIG),mk(C.wall,0.92));
+  wall.position.set(ctr.x-camDir.x*wallDist, 0, ctr.z-camDir.z*wallDist);
+  wall.lookAt(wall.position.x+camDir.x, 0, wall.position.z+camDir.z); roomG.add(wall);
+  // warm light pools cast BY the fixture onto ceiling / wall / floor
+  const warm=new THREE.Color(kelvinToRGB(state.temp)).lerp(new THREE.Color(0xffffff),0.35);
+  // sits in the LOWER part of the cluster (where the glass is), not up by the plate → the plate isn't flooded with light
+  const lp=new THREE.PointLight(warm, dark?1.1:0.7, ext*6+600, 1.6); lp.position.set(ctr.x, box.min.y+sz.y*0.22, ctr.z); roomG.add(lp);
+  const lp2=new THREE.PointLight(warm, dark?0.6:0.4, ext*4+400, 1.6); lp2.position.set(ctr.x, box.min.y-10, ctr.z); roomG.add(lp2);
+  scene.add(roomG);
+  // the ceiling plate is a matte surface, not a light: tone it down so it doesn't glow/halo like a luminaire
+  const _plate=[]; scene.traverse(o=>{ if(o.userData && o.userData.isCanopy && o.material){ const m=o.material; _plate.push([m,m.color.clone(),m.envMapIntensity]); m.color.multiplyScalar(dark?0.55:0.8); if(m.envMap) m.envMapIntensity=(m.envMapIntensity||1)*0.5; } });
+  scene.background=new THREE.Color(C.wall);
+  amb.intensity=dark?0.10:0.45; key.intensity=dark?0.18:0.45; fill.intensity=dark?0.08:0.2;
+  // --- filmic tone mapping (recompile materials for it)
+  renderer.toneMapping=THREE.ACESFilmicToneMapping; renderer.toneMappingExposure=dark?1.25:1.1;
+  scene.traverse(o=>{ if(o.material){ (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>m.needsUpdate=true); } });
+  // --- supersampled render (~2800px long side)
+  const ss=Math.min(4, Math.max(2, Math.ceil(2800/Math.max(sv.size.x,sv.size.y,1))));
+  renderer.setPixelRatio(ss); renderer.setSize(sv.size.x,sv.size.y,false);
+  fixtures.traverse(o=>{ if(o.isMesh && o.material && o.material.map){ o.material.map.anisotropy=renderer.capabilities.getMaxAnisotropy(); } });
+  renderer.render(scene,camera);
+  const src=renderer.domElement, W=src.width, H=src.height;
+  const out=document.createElement("canvas"); out.width=W; out.height=H;
+  const ox=out.getContext("2d"); ox.drawImage(src,0,0);
+  // --- restore live view
+  _plate.forEach(([m,c,e])=>{ m.color.copy(c); m.envMapIntensity=e; });
+  scene.remove(roomG); roomG.traverse(o=>{ if(o.geometry)o.geometry.dispose(); if(o.material)o.material.dispose(); });
+  renderer.toneMapping=sv.tm; renderer.toneMappingExposure=sv.te; scene.background=sv.bg;
+  amb.intensity=sv.amb; key.intensity=sv.key; fill.intensity=sv.fill;
+  scene.traverse(o=>{ if(o.material){ (Array.isArray(o.material)?o.material:[o.material]).forEach(m=>m.needsUpdate=true); } });
+  renderer.setPixelRatio(sv.pr); renderer.setSize(sv.size.x,sv.size.y,false); renderer.render(scene,camera);
+  // --- glow halo: bright-pass at 1/4 res → blur → screen onto the image
+  try{
+    const q=4, w=Math.max(1,Math.round(W/q)), h=Math.max(1,Math.round(H/q));
+    const bp=document.createElement("canvas"); bp.width=w; bp.height=h; const bx=bp.getContext("2d");
+    bx.drawImage(out,0,0,w,h);
+    const id=bx.getImageData(0,0,w,h), d=id.data;
+    for(let i=0;i<d.length;i+=4){ const L=(0.2126*d[i]+0.7152*d[i+1]+0.0722*d[i+2])/255;
+      const k=Math.max(0,Math.min(1,(L-0.72)/0.25)); d[i]*=k; d[i+1]*=k; d[i+2]*=k; }
+    bx.putImageData(id,0,0);
+    ox.save(); ox.globalCompositeOperation="screen";
+    [[W*0.006,0.55],[W*0.02,0.45],[W*0.05,0.30]].forEach(([r,a])=>{ ox.filter="blur("+Math.round(r)+"px)"; ox.globalAlpha=a; ox.drawImage(bp,0,0,W,H); });
+    ox.restore(); ox.filter="none";
+  }catch(e){}
+  // --- soft vignette
+  const vg=ox.createRadialGradient(W/2,H*0.45,Math.min(W,H)*0.35,W/2,H*0.5,Math.max(W,H)*0.75);
+  vg.addColorStop(0,"rgba(0,0,0,0)"); vg.addColorStop(1,dark?"rgba(0,0,0,0.45)":"rgba(40,30,20,0.22)");
+  ox.fillStyle=vg; ox.fillRect(0,0,W,H);
+  return out;
+}
+function showRenderModal(){
+  let m=document.getElementById("renderModal");
+  if(!m){
+    m=document.createElement("div"); m.id="renderModal";
+    m.style.cssText="position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.88);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px;box-sizing:border-box;";
+    m.innerHTML='<img id="renderImg" style="max-width:96vw;max-height:80vh;border-radius:6px;box-shadow:0 10px 50px rgba(0,0,0,.6);">'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">'
+      +'<button class="btn" id="rDark" style="width:auto;margin:0;padding:8px 16px;">חלל כהה</button>'
+      +'<button class="btn" id="rLight" style="width:auto;margin:0;padding:8px 16px;">חלל בהיר</button>'
+      +'<button class="btn primary" id="rDl" style="width:auto;margin:0;padding:8px 16px;">⬇ הורדה (PNG)</button>'
+      +'<button class="btn" id="rClose" style="width:auto;margin:0;padding:8px 16px;">סגור</button></div>'
+      +'<div id="rStat" style="font-size:12px;color:#9a9aa6;"></div>';
+    document.body.appendChild(m);
+    m.querySelector("#rClose").onclick=()=>{ m.style.display="none"; };
+    m.querySelector("#rDark").onclick=()=>doRender("dark");
+    m.querySelector("#rLight").onclick=()=>doRender("light");
+    m.querySelector("#rDl").onclick=()=>{ const a=document.createElement("a"); a.href=m.querySelector("#renderImg").src; a.download=(typeof tag==="function"?tag():"render")+"_render.png"; a.click(); };
+  }
+  m.style.display="flex"; return m;
+}
+function doRender(room){
+  const m=showRenderModal(), st=m.querySelector("#rStat");
+  st.textContent="מרנדר…";
+  ["rDark","rLight"].forEach(id=>{ const b=m.querySelector("#"+id); const on=(id==="rDark")===((room||_renderRoom)==="dark"); b.style.borderColor=on?"var(--accent)":""; b.style.color=on?"var(--accent)":""; });
+  setTimeout(()=>{ try{ const c=renderPhoto(room); m.querySelector("#renderImg").src=c.toDataURL("image/png"); st.textContent=c.width+"×"+c.height+" פיקסלים"; }
+                   catch(e){ st.textContent="הרינדור נכשל: "+e.message; } },30);
+}
+document.getElementById("renderBtn").onclick=()=>doRender();
 document.getElementById("png").onclick=exportPNG;
 document.getElementById("pngT").onclick=exportTransparentPNG;
 document.getElementById("cap3").onclick=capture3;
