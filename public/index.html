@@ -97,7 +97,7 @@
     <div id="brand">
       <h1>Sun<b>beam</b></h1>
       <span>BY SHIMAL'E PELEG · מחולל תלת-מימד</span>
-      <span style="display:block;color:var(--accent);font-size:10px;margin-top:3px;">גרסה 227 · גיבוי אוטומטי לקובץ בכל שמירה (מופעל אוטומטית בקובץ מקומי) — כדי לא לאבד עיצובים</span>
+      <span style="display:block;color:var(--accent);font-size:10px;margin-top:3px;">גרסה 228 · גיבוי אוטומטי לקובץ בכל שמירה (מופעל אוטומטית בקובץ מקומי) — כדי לא לאבד עיצובים</span>
     </div>
 
 
@@ -682,6 +682,31 @@ ground.rotation.x=-Math.PI/2; ground.position.y=-260; ground.visible=false; scen
 
 const fixtures=new THREE.Group(); scene.add(fixtures);
 
+// ---- studio reflection map for metal finishes (plate, fittings, rods) ----
+// without it, metallic colours reflect "nothing" and render near-black; this soft studio
+// (bright top, warm-neutral walls, light floor) lets brass/bronze/copper read as their real colour
+const finishEnv=(function(){
+  try{
+    const es=new THREE.Scene();
+    const geo=new THREE.SphereGeometry(100,32,16), cols=[], pos=geo.attributes.position;
+    for(let i=0;i<pos.count;i++){ const y=pos.getY(i)/100;            // -1 floor … +1 ceiling
+      const v= y>0 ? 0.80+0.20*y : 0.50+0.20*(1+y);                  // never dark: underside still sees a light floor
+      cols.push(v,v*0.98,v*0.95); }
+    geo.setAttribute("color",new THREE.Float32BufferAttribute(cols,3));
+    es.add(new THREE.Mesh(geo,new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.BackSide})));
+    // two soft "softbox" panels give the metal a visible highlight
+    const pm=new THREE.MeshBasicMaterial({color:0xffffff,side:THREE.DoubleSide});
+    const p1=new THREE.Mesh(new THREE.PlaneGeometry(70,40),pm); p1.position.set(60,30,50); p1.lookAt(0,0,0); es.add(p1);
+    const p2=new THREE.Mesh(new THREE.PlaneGeometry(60,30),pm); p2.position.set(-70,-20,-40); p2.lookAt(0,0,0); es.add(p2);
+    const pm2=new THREE.PMREMGenerator(renderer); const t=pm2.fromScene(es,0.04).texture; pm2.dispose(); return t;
+  }catch(e){ return null; }
+})();
+function finishMat(col,rough,metal){
+  const m=new THREE.MeshStandardMaterial({color:col,roughness:rough,metalness:metal});
+  if(finishEnv){ m.envMap=finishEnv; m.envMapIntensity=1.15; }
+  return m;
+}
+
 // shared cable resources + helpers (cables hang FROM the ceiling plate)
 const cableGeo=new THREE.CylinderGeometry(0.055,0.055,1,8); // thin steel wire — unit height, scaled per cable
 const cableMat=new THREE.MeshStandardMaterial({color:0x8a8a8a,roughness:0.5,metalness:0.4});
@@ -884,7 +909,7 @@ function buildFixture(height, glowColor, glowInt, glassHex, wOverride, bivVarian
   const effW = sq!==null ? sq : CW;
   if(SH!=="shell" && SH!=="blob"){
   const effD = sq!==null ? sq : (SH==="circle" ? CW : CD);
-  const metal=new THREE.MeshStandardMaterial({color:finCol,roughness:state.finishR,metalness:state.finishM});
+  const metal=finishMat(finCol,state.finishR,state.finishM);
   if(state.model==="gleamsMedium"){
     // top fitting is INSERTED between the two glass plates (not sitting above them)
     const _Wd=Math.max(CW,CD), _Nd=Math.min(CW,CD), clipH=Math.max(1.2,height*0.07);
@@ -1363,7 +1388,7 @@ function buildCanopy(maxX,maxZ){
   if(state.canopy==="none")return 0;
   const TH=CANOPY_TH;
   const marg=state.margin, A=state.canopyAuto;
-  const mat=new THREE.MeshStandardMaterial({color:new THREE.Color(state.finishHex),roughness:state.finishR,metalness:state.finishM});
+  const mat=finishMat(new THREE.Color(state.finishHex),state.finishR,state.finishM);
   let geo, half, wField, lField=null;
   // plate must always COVER the whole pendant array (else cables would hang from thin air)
   const coverR=(Math.max(maxX,maxZ)+marg+state.cw/2)*2, coverW=maxX*2+marg*2+state.cw, coverL=maxZ*2+marg*2+state.cd;
@@ -1408,7 +1433,7 @@ function buildCanopy(maxX,maxZ){
     c2.quaternion.copy(c.quaternion);
     c2.userData.export=true; c2.userData.isCanopy=true; c2.visible=!state._editTop; fixtures.add(c2);
     // 4 DIAGONAL support cables from the small top plate down to the BIG plate's four corners
-    const rodMat=new THREE.MeshStandardMaterial({color:new THREE.Color(state.finishHex),roughness:state.finishR,metalness:Math.max(0.5,state.finishM)});
+    const rodMat=finishMat(new THREE.Color(state.finishHex),state.finishR,Math.max(0.5,state.finishM));
     const yTop=TH+gap, yBig=TH;   // underside of top plate → top of big plate
     let bigC, smallC;
     if(state.canopy==="circle"){ const R=state._cR||10, r=R*sc, k=0.707;
