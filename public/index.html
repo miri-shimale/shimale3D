@@ -97,7 +97,7 @@
     <div id="brand">
       <h1>Sun<b>beam</b></h1>
       <span>BY SHIMAL'E PELEG · מחולל תלת-מימד</span>
-      <span style="display:block;color:var(--accent);font-size:10px;margin-top:3px;">גרסה 235 · גיבוי אוטומטי לקובץ בכל שמירה (מופעל אוטומטית בקובץ מקומי) — כדי לא לאבד עיצובים</span>
+      <span style="display:block;color:var(--accent);font-size:10px;margin-top:3px;">גרסה 236 · גיבוי אוטומטי לקובץ בכל שמירה (מופעל אוטומטית בקובץ מקומי) — כדי לא לאבד עיצובים</span>
     </div>
 
 
@@ -177,15 +177,14 @@
         <div class="segbtn" data-c="rect">מלבן</div>
         <div class="segbtn" data-c="none">ללא</div>
       </div>
-      <label class="check" style="margin-top:10px;"><input type="checkbox" id="canopyAuto" checked=""> גודל אוטומטי (לפי הפריסה)</label>
+      <label class="check" style="display:none;"><input type="checkbox" id="canopyAuto"> גודל אוטומטי (לפי הפריסה)</label><!-- v236: auto-size removed from the UI; kept hidden for older saved designs -->
       <div id="canopyManual" style="display: block;">
         <label class="row"><span id="canopyWLbl">קוטר (ס"מ)</span>
-          <input type="number" id="canopyW" min="0" max="1000" step="1" value="40" style="width:80px" disabled="">
+          <input type="number" id="canopyW" min="0" max="1000" step="1" value="40" style="width:80px">
         </label>
         <label class="row" id="canopyLRow" style="display:none;"><span id="canopyLLbl">אורך (ס"מ)</span>
-          <input type="number" id="canopyL" min="0" max="1000" step="1" value="40" style="width:80px" disabled="">
+          <input type="number" id="canopyL" min="0" max="1000" step="1" value="40" style="width:80px">
         </label>
-        <div style="font-size:11px;color:var(--muted);margin-top:4px;">הסירי את הסימון כדי לקבוע מידות ידנית</div>
       </div>
       <label class="row" style="margin-top:8px;"><span id="marginLbl">שוליים מכל צד (ס"מ)</span>
         <input type="number" id="margin" min="0" max="50" step="1" value="3" style="width:80px">
@@ -632,7 +631,7 @@ const FINISH = [
 const state = {
   model:"sunbeam", modelName:"Sunbeam", top:"cross", bulb:"GU10 7W · 3000K",
   cw:CROSS_W, cd:CROSS_D, shape:"rect",
-  canopyAuto:true, canopyW:40, canopyL:40, dbl:false, dblScale:0.55, dblGap:15,
+  canopyAuto:false, canopyW:40, canopyL:40, dbl:false, dblScale:0.55, dblGap:15,
   mode:"uniform", size:"standard", customH:null, qty:7,
   counts:{small:0, standard:2, medium:0, xl:3},
   pattern:"rows", space:14, stag:18, rowSpec:null,
@@ -1417,6 +1416,12 @@ function buildCanopy(maxX,maxZ){
     state.canopyW=wField; if(lField!=null)state.canopyL=lField;
     const wi=document.getElementById("canopyW"); if(wi)wi.value=(wField/U().f).toFixed(U().dec);
     const li=document.getElementById("canopyL"); if(li&&lField!=null)li.value=(lField/U().f).toFixed(U().dec);
+    // v236: auto-size no longer exists — an older design saved in auto mode keeps the plate size it had,
+    // and from now on is a normal fixed-size plate (pendants laid out inside it by the margins)
+    state.canopyAuto=false;
+    { const ca=document.getElementById("canopyAuto"); if(ca) ca.checked=false;
+      if(wi) wi.disabled=false; if(li) li.disabled=false; }
+    setTimeout(()=>{ if(typeof updateCanopyLabels==="function")updateCanopyLabels(); if(typeof updateLayoutMode==="function")updateLayoutMode(); rebuild(); },0);
   }
   const c=new THREE.Mesh(geo,mat);
   c.position.set(0,TH/2,0);
