@@ -20,7 +20,7 @@
   #brand h1 b{color:var(--accent);}
   #brand span{display:block;font-size:11px;color:var(--muted);margin-top:2px;letter-spacing:2px;}
   .group{padding:14px 18px;border-bottom:1px solid var(--line);}
-  .group h2{margin:0 0 10px;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:600;}
+  .group h2{margin:0 0 10px;font-size:13px;color:#fff;text-transform:uppercase;letter-spacing:1px;font-weight:700;}
   /* v243: four collapsible panel sections */
   .psec{border-bottom:1px solid var(--line);}
   .psec>summary{list-style:none;cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between;padding:12px 18px;font-size:13px;letter-spacing:1.2px;color:var(--accent);font-weight:600;background:var(--panel2);position:sticky;top:0;z-index:2;border-bottom:1px solid var(--line);}
@@ -104,7 +104,7 @@
     <div id="brand">
       <h1>Sun<b>beam</b></h1>
       <span>BY SHIMAL'E PELEG · מחולל תלת-מימד</span>
-      <span style="display:block;color:var(--accent);font-size:10px;margin-top:3px;">גרסה 243 · גיבוי אוטומטי לקובץ בכל שמירה (מופעל אוטומטית בקובץ מקומי) — כדי לא לאבד עיצובים</span>
+      <span style="display:block;color:var(--accent);font-size:10px;margin-top:3px;">גרסה 244 · גיבוי אוטומטי לקובץ בכל שמירה (מופעל אוטומטית בקובץ מקומי) — כדי לא לאבד עיצובים</span>
     </div>
 
     <details class="psec" data-sec="files" open>
@@ -151,27 +151,6 @@
         <div class="segbtn active" data-u="cm">ס"מ</div>
         <div class="segbtn" data-u="imp">אינץ' + רגל</div>
       </div>
-      <div style="font-size:11px;color:var(--muted);margin-top:8px;">אימפריאלי: קלט באינץ', תצוגה ברגל+אינץ' (′2 ″4)</div>
-    </div>
-
-<div class="group">
-      <h2>סוג גודל וכמות</h2>
-      <div class="seg" id="mode" style="grid-template-columns:1fr 1fr;">
-        <div class="segbtn active" data-m="uniform">גודל אחיד</div>
-        <div class="segbtn" data-m="counts">כמות לכל גודל</div>
-      </div>
-
-      <div id="uniformPanel" style="display: block;">
-        <div class="sizes" id="sizes" style="margin-top:12px;"><div class="sizebtn" data-k="small"><div class="n">Small</div><div class="d">30 ס"מ</div></div><div class="sizebtn active" data-k="standard"><span class="tag">נפוץ זכ׳</span><div class="n">Standard</div><div class="d">40 ס"מ</div></div><div class="sizebtn" data-k="medium"><div class="n">Medium</div><div class="d">55 ס"מ</div></div><div class="sizebtn" data-k="xl"><span class="tag">נפוץ זכ׳</span><div class="n">XL</div><div class="d">68.6 ס"מ</div></div></div>
-        <label class="row" style="margin-top:12px;">כמות פנדנטס (עד 200)
-          <input type="number" id="qty" min="1" max="200" step="1" value="7" style="width:80px">
-        </label>
-      </div>
-
-      <div id="countsPanel" style="display:none;margin-top:12px;">
-        <div id="countsRows"><div class="crow"><span><span class="cn"><b>Small</b></span> <span class="cd">30 ס"מ</span></span><input type="number" min="0" max="200" data-k="small"></div><div class="crow"><span><span class="cn"><b>Standard</b></span> <span class="cd">40 ס"מ</span></span><input type="number" min="0" max="200" data-k="standard"></div><div class="crow"><span><span class="cn"><b>Medium</b></span> <span class="cd">55 ס"מ</span></span><input type="number" min="0" max="200" data-k="medium"></div><div class="crow"><span><span class="cn"><b>XL</b></span> <span class="cd">68.6 ס"מ</span></span><input type="number" min="0" max="200" data-k="xl"></div></div>
-        <div class="ctotal">סה"כ באשכול: <b id="ctot">5</b> פנדנטס</div>
-      </div>
     </div>
 
 <div class="group">
@@ -212,12 +191,26 @@
         </select>
       </label>
       <div style="font-size:11px;color:var(--muted);margin-top:4px;">0 = תקרה שטוחה. הזווית מטה את הפלטה, והכיוון קובע לאיזה צד היא יורדת. משתקף בהדמיה, בחתך (ימין/שמאל) ובדף המפרט.</div>
-      <div style="font-size:12px;color:var(--muted);margin:12px 0 6px;">גימור פלטה ומתכת</div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span id="finishSw" style="width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--line); flex: 0 0 auto; background: rgb(236, 236, 236);"></span>
-        <select id="finish" style="flex:1;"></select>
+    </div>
+
+<div class="group">
+      <h2>סוג גודל וכמות</h2>
+      <div class="seg" id="mode" style="grid-template-columns:1fr 1fr;">
+        <div class="segbtn active" data-m="uniform">גודל אחיד</div>
+        <div class="segbtn" data-m="counts">כמות לכל גודל</div>
       </div>
-      <div id="finishNote" style="font-size: 11px; color: var(--accent); margin-top: 6px; display: block;">נירוסטה / ניקל-מוברש אינם זמינים בפלטה עגולה.</div>
+
+      <div id="uniformPanel" style="display: block;">
+        <div class="sizes" id="sizes" style="margin-top:12px;"><div class="sizebtn" data-k="small"><div class="n">Small</div><div class="d">30 ס"מ</div></div><div class="sizebtn active" data-k="standard"><span class="tag">נפוץ זכ׳</span><div class="n">Standard</div><div class="d">40 ס"מ</div></div><div class="sizebtn" data-k="medium"><div class="n">Medium</div><div class="d">55 ס"מ</div></div><div class="sizebtn" data-k="xl"><span class="tag">נפוץ זכ׳</span><div class="n">XL</div><div class="d">68.6 ס"מ</div></div></div>
+        <label class="row" style="margin-top:12px;">כמות פנדנטס (עד 200)
+          <input type="number" id="qty" min="1" max="200" step="1" value="7" style="width:80px">
+        </label>
+      </div>
+
+      <div id="countsPanel" style="display:none;margin-top:12px;">
+        <div id="countsRows"><div class="crow"><span><span class="cn"><b>Small</b></span> <span class="cd">30 ס"מ</span></span><input type="number" min="0" max="200" data-k="small"></div><div class="crow"><span><span class="cn"><b>Standard</b></span> <span class="cd">40 ס"מ</span></span><input type="number" min="0" max="200" data-k="standard"></div><div class="crow"><span><span class="cn"><b>Medium</b></span> <span class="cd">55 ס"מ</span></span><input type="number" min="0" max="200" data-k="medium"></div><div class="crow"><span><span class="cn"><b>XL</b></span> <span class="cd">68.6 ס"מ</span></span><input type="number" min="0" max="200" data-k="xl"></div></div>
+        <div class="ctotal">סה"כ באשכול: <b id="ctot">5</b> פנדנטס</div>
+      </div>
     </div>
 
 <div class="group">
@@ -264,6 +257,15 @@
         </select>
       </label>
       <div style="font-size:11px;color:var(--muted);margin-top:4px;">קובע את הצללית הכללית: אקראי = פיזור טבעי; פירמידה = היחידות באמצע יורדות הכי נמוך; קערה = הקצוות יורדים; מפל = ירידה אלכסונית מצד לצד; ספירלה = הגובה יורד בהדרגה סביב המרכז, כמו גרם מדרגות לולייני.</div>
+    </div>
+
+<div class="group">
+      <h2>גימור פלטה ומתכת</h2>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span id="finishSw" style="width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--line); flex: 0 0 auto; background: rgb(236, 236, 236);"></span>
+        <select id="finish" style="flex:1;"></select>
+      </div>
+      <div id="finishNote" style="font-size: 11px; color: var(--accent); margin-top: 6px; display: block;">נירוסטה / ניקל-מוברש אינם זמינים בפלטה עגולה.</div>
     </div>
       <!-- v243: "גובה מותאם" and "מרווח" removed from the UI; kept hidden so existing code paths & saved designs keep working -->
       <div style="display:none;">
