@@ -21,6 +21,13 @@
   #brand span{display:block;font-size:11px;color:var(--muted);margin-top:2px;letter-spacing:2px;}
   .group{padding:14px 18px;border-bottom:1px solid var(--line);}
   .group h2{margin:0 0 10px;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:600;}
+  /* v243: four collapsible panel sections */
+  .psec{border-bottom:1px solid var(--line);}
+  .psec>summary{list-style:none;cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between;padding:12px 18px;font-size:13px;letter-spacing:1.2px;color:var(--accent);font-weight:600;background:var(--panel2);position:sticky;top:0;z-index:2;border-bottom:1px solid var(--line);}
+  .psec>summary::-webkit-details-marker{display:none;}
+  .psec>summary::after{content:"▾";font-size:12px;transition:transform .15s;}
+  .psec:not([open])>summary::after{transform:rotate(90deg);}
+  .psec>summary:hover{filter:brightness(1.15);}
   label.row{display:flex;justify-content:space-between;align-items:center;font-size:13px;margin:9px 0;gap:10px;}
   label.row .val{color:var(--accent);font-variant-numeric:tabular-nums;min-width:52px;text-align:left;}
   select,input[type=number]{background:var(--panel2);color:var(--text);border:1px solid var(--line);
@@ -97,12 +104,11 @@
     <div id="brand">
       <h1>Sun<b>beam</b></h1>
       <span>BY SHIMAL'E PELEG · מחולל תלת-מימד</span>
-      <span style="display:block;color:var(--accent);font-size:10px;margin-top:3px;">גרסה 242 · גיבוי אוטומטי לקובץ בכל שמירה (מופעל אוטומטית בקובץ מקומי) — כדי לא לאבד עיצובים</span>
+      <span style="display:block;color:var(--accent);font-size:10px;margin-top:3px;">גרסה 243 · גיבוי אוטומטי לקובץ בכל שמירה (מופעל אוטומטית בקובץ מקומי) — כדי לא לאבד עיצובים</span>
     </div>
 
-
-    <div style="margin:16px 4px 4px;font-size:11px;letter-spacing:1.5px;color:var(--accent);text-transform:uppercase;opacity:.85;border-bottom:1px solid var(--line);padding-bottom:4px;">הגדרות</div>
-
+    <details class="psec" data-sec="files" open>
+      <summary>קבצים</summary>
 <div class="group">
       <h2>דגם</h2>
       <select id="model">
@@ -135,7 +141,10 @@
       <button class="btn" id="resetAll" style="border-color:#7a3b3b;color:#ffb3b3;margin-top:4px;">♻ אפס הכל לברירת מחדל</button>
       <div style="font-size:11px;color:var(--muted);margin-top:6px;">שמירה אוטומטית פעילה — רענון משחזר את הסידור האחרון.</div>
     </div>
+    </details>
 
+    <details class="psec" data-sec="base" open>
+      <summary>בסיס ולייאאוט</summary>
 <div class="group">
       <h2>סוג מידה</h2>
       <div class="seg" id="unit" style="grid-template-columns:1fr 1fr;">
@@ -144,8 +153,6 @@
       </div>
       <div style="font-size:11px;color:var(--muted);margin-top:8px;">אימפריאלי: קלט באינץ', תצוגה ברגל+אינץ' (′2 ″4)</div>
     </div>
-
-    <div style="margin:16px 4px 4px;font-size:11px;letter-spacing:1.5px;color:var(--accent);text-transform:uppercase;opacity:.85;border-bottom:1px solid var(--line);padding-bottom:4px;">מבנה</div>
 
 <div class="group">
       <h2>סוג גודל וכמות</h2>
@@ -156,9 +163,6 @@
 
       <div id="uniformPanel" style="display: block;">
         <div class="sizes" id="sizes" style="margin-top:12px;"><div class="sizebtn" data-k="small"><div class="n">Small</div><div class="d">30 ס"מ</div></div><div class="sizebtn active" data-k="standard"><span class="tag">נפוץ זכ׳</span><div class="n">Standard</div><div class="d">40 ס"מ</div></div><div class="sizebtn" data-k="medium"><div class="n">Medium</div><div class="d">55 ס"מ</div></div><div class="sizebtn" data-k="xl"><span class="tag">נפוץ זכ׳</span><div class="n">XL</div><div class="d">68.6 ס"מ</div></div></div>
-        <label class="row" style="margin-top:12px;">גובה מותאם (<span id="customHU">ס"מ</span>)
-          <input type="number" id="customH" min="0" max="800" step="1" style="width:80px" placeholder="—">
-        </label>
         <label class="row" style="margin-top:12px;">כמות פנדנטס (עד 200)
           <input type="number" id="qty" min="1" max="200" step="1" value="7" style="width:80px">
         </label>
@@ -196,6 +200,24 @@
         <label class="row"><span>גודל הפלטה השנייה (%)</span> <input type="number" id="dblScale" min="20" max="95" step="5" value="55" style="width:70px;"></label>
         <label class="row"><span id="dblGapLbl">מרחק מעל (ס"מ)</span> <input type="number" id="dblGap" min="1" max="200" step="1" value="15" style="width:70px;"></label>
       </div>
+      <label class="row" style="margin-top:12px;">זווית תקרה (מעלות)
+        <input type="number" id="ceilAngle" min="0" max="45" step="1" value="0" style="width:70px">
+      </label>
+      <label class="row" style="margin-top:8px;">כיוון ההטיה (יורד ל־)
+        <select id="ceilDir" style="width:110px">
+          <option value="0">ימינה</option>
+          <option value="180">שמאלה</option>
+          <option value="90">אחורה</option>
+          <option value="270">קדימה</option>
+        </select>
+      </label>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px;">0 = תקרה שטוחה. הזווית מטה את הפלטה, והכיוון קובע לאיזה צד היא יורדת. משתקף בהדמיה, בחתך (ימין/שמאל) ובדף המפרט.</div>
+      <div style="font-size:12px;color:var(--muted);margin:12px 0 6px;">גימור פלטה ומתכת</div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span id="finishSw" style="width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--line); flex: 0 0 auto; background: rgb(236, 236, 236);"></span>
+        <select id="finish" style="flex:1;"></select>
+      </div>
+      <div id="finishNote" style="font-size: 11px; color: var(--accent); margin-top: 6px; display: block;">נירוסטה / ניקל-מוברש אינם זמינים בפלטה עגולה.</div>
     </div>
 
 <div class="group">
@@ -212,9 +234,6 @@
         <input type="text" id="rowSpec" placeholder="למשל: 15,16,15,16" style="width:100%;margin-top:5px;">
         <div id="rowSpecInfo" style="font-size:11px;color:#8a8a92;margin-top:5px;">כתבי כמות לכל שורה מופרד בפסיק (למשל 15,15,15 = 3 שורות של 15). ריק = תכנון אוטומטי. הכמות הכוללת תתעדכן לסכום.</div>
       </div>
-      <label class="row" style="margin-top:12px;"><span id="spaceLbl">מרווח בין פנדנטים</span> <span class="val" id="spaceVal">14 ס"מ</span></label>
-      <input type="range" id="space" min="2" max="60" value="14">
-      <div id="fillNote" style="font-size:11px;color:var(--accent);margin-top:4px;display:none;">מצב מילוי בסיס: הפנדנטים נפרסים בתוך הפלטה לפי השוליים (המרווח נגזר).</div>
       <button class="btn primary" id="arrangeBtn" title="מבטל נעילה והזזות ידניות, מתכנן מחדש לפי כל ההגדרות ומפזר את הצבעים בצורה הכי אחידה. צבעים שנקבעו ידנית ליחידה נשמרים.">✨ סדר לפי הפרמטרים</button>
       <button class="btn" id="shuffle">↻ ערבב סידור מחדש</button>
     </div>
@@ -245,22 +264,20 @@
         </select>
       </label>
       <div style="font-size:11px;color:var(--muted);margin-top:4px;">קובע את הצללית הכללית: אקראי = פיזור טבעי; פירמידה = היחידות באמצע יורדות הכי נמוך; קערה = הקצוות יורדים; מפל = ירידה אלכסונית מצד לצד; ספירלה = הגובה יורד בהדרגה סביב המרכז, כמו גרם מדרגות לולייני.</div>
-      <label class="row" style="margin-top:12px;">זווית תקרה (מעלות)
-        <input type="number" id="ceilAngle" min="0" max="45" step="1" value="0" style="width:70px">
-      </label>
-      <label class="row" style="margin-top:8px;">כיוון ההטיה (יורד ל־)
-        <select id="ceilDir" style="width:110px">
-          <option value="0">ימינה</option>
-          <option value="180">שמאלה</option>
-          <option value="90">אחורה</option>
-          <option value="270">קדימה</option>
-        </select>
-      </label>
-      <div style="font-size:11px;color:var(--muted);margin-top:4px;">0 = תקרה שטוחה. הזווית מטה את הפלטה, והכיוון קובע לאיזה צד היא יורדת. משתקף בהדמיה, בחתך (ימין/שמאל) ובדף המפרט.</div>
     </div>
+      <!-- v243: "גובה מותאם" and "מרווח" removed from the UI; kept hidden so existing code paths & saved designs keep working -->
+      <div style="display:none;">
+        <label class="row" style="margin-top:12px;">גובה מותאם (<span id="customHU">ס"מ</span>)
+          <input type="number" id="customH" min="0" max="800" step="1" style="width:80px" placeholder="—">
+        </label>
+      <label class="row" style="margin-top:12px;"><span id="spaceLbl">מרווח בין פנדנטים</span> <span class="val" id="spaceVal">14 ס"מ</span></label>
+      <input type="range" id="space" min="2" max="60" value="14">
+      <div id="fillNote" style="font-size:11px;color:var(--accent);margin-top:4px;display:none;">מצב מילוי בסיס: הפנדנטים נפרסים בתוך הפלטה לפי השוליים (המרווח נגזר).</div>
+      </div>
+    </details>
 
-    <div style="margin:16px 4px 4px;font-size:11px;letter-spacing:1.5px;color:var(--accent);text-transform:uppercase;opacity:.85;border-bottom:1px solid var(--line);padding-bottom:4px;">מראה</div>
-
+    <details class="psec" data-sec="glass" open>
+      <summary>זכוכית</summary>
 <div class="group">
       <h2>צבעים</h2>
       <div class="seg" id="faceSplit" style="grid-template-columns:1fr 1fr;margin-bottom:8px;">
@@ -337,20 +354,15 @@
         </label>
         <div id="orientStatus" style="font-size:11px;color:var(--accent);margin-top:6px;"></div>
       </div>
-      <div style="font-size:12px;color:var(--muted);margin:12px 0 6px;">גימור פלטה ומתכת</div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span id="finishSw" style="width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--line); flex: 0 0 auto; background: rgb(236, 236, 236);"></span>
-        <select id="finish" style="flex:1;"></select>
-      </div>
-      <div id="finishNote" style="font-size: 11px; color: var(--accent); margin-top: 6px; display: block;">נירוסטה / ניקל-מוברש אינם זמינים בפלטה עגולה.</div>
     </div>
+    </details>
 
+    <details class="psec" data-sec="output" open>
+      <summary>Output</summary>
 <div class="group">
       <h2>תצוגה</h2>
       <label class="check"><input type="checkbox" id="light"> רקע בהיר (הדמיית חלל)</label>
     </div>
-
-    <div style="margin:16px 4px 4px;font-size:11px;letter-spacing:1.5px;color:var(--accent);text-transform:uppercase;opacity:.85;border-bottom:1px solid var(--line);padding-bottom:4px;">פלט</div>
 
 <div class="group">
       <h2>פרטי הסידור</h2>
@@ -370,7 +382,7 @@
     </div>
 
 <div class="group">
-      <h2>פלט</h2>
+      <h2>ייצוא</h2>
       <div id="readout">דגם: <b>Sunbeam</b><br>כמות פנדנטים: <b>7</b><br>פירוט גדלים: <b>7× Standard</b><br>חתך גוף: <b>7 ס"מ × 5 ס"מ</b><br>זכוכית: <b>7× White Candels</b><br>פלטת תקרה: <b>עיגול ⌀41 ס"מ</b><br>גימור: <b>White - Matte</b><br>אורך מהתקרה: <b>60 ס"מ – 80 ס"מ</b><br>נורה: <b>GU10 7W · 3000K</b></div>
       <button class="btn primary" id="png">📷 צילום התצוגה הנוכחית (PNG)</button>
       <button class="btn" id="pngT">🪟 הורדה על רקע שקוף (PNG) — להלבשה על תמונת חלל</button>
@@ -388,6 +400,7 @@
       <div id="designStatus" style="font-size:11px;color:var(--muted);margin-top:4px;"></div>
       <div id="saveWarn" style="display: block; font-size: 12px; line-height: 1.5; margin-top: 8px; padding: 9px 11px; border-radius: 8px; background: rgba(180, 40, 40, 0.16); border: 1px solid rgba(255, 90, 90, 0.55); color: rgb(255, 215, 215); font-weight: 600;">⚠ בדפדפן הזה השמירות <u>בתוך האפליקציה</u> (הרשימה) עלולות להימחק כשסוגרים את הקובץ.<br>הפעלתי <b>גיבוי אוטומטי לקובץ</b> — כל שמירה תוריד קובץ שלא נמחק. לפתיחה: <b>📂 טען עיצוב מקובץ</b>. (אפשר לבטל את הסימון אם לא נוח).</div>
     </div>
+    </details>
 
   </aside>
 
@@ -3796,4 +3809,15 @@ requestAnimationFrame(()=>{ resize(); recenter(); });   // re-fit once layout ha
 </script>
 
 
+<script>
+/* v243: remember which panel sections are open */
+(function(){
+  var K="shimale_panel_sections", st={};
+  try{ st=JSON.parse(localStorage.getItem(K)||"{}")||{}; }catch(e){ st={}; }
+  document.querySelectorAll("#panel details.psec").forEach(function(d){
+    var k=d.dataset.sec; if(k in st) d.open=!!st[k];
+    d.addEventListener("toggle",function(){ st[k]=d.open; try{ localStorage.setItem(K,JSON.stringify(st)); }catch(e){} });
+  });
+})();
+</script>
 </body></html>
