@@ -104,7 +104,7 @@
     <div id="brand">
       <h1>Sun<b>beam</b></h1>
       <span>BY SHIMAL'E PELEG · מחולל תלת-מימד</span>
-      <span style="display:block;color:var(--accent);font-size:10px;margin-top:3px;">גרסה 244 · גיבוי אוטומטי לקובץ בכל שמירה (מופעל אוטומטית בקובץ מקומי) — כדי לא לאבד עיצובים</span>
+      <span style="display:block;color:var(--accent);font-size:10px;margin-top:3px;">גרסה 245 · גיבוי אוטומטי לקובץ בכל שמירה (מופעל אוטומטית בקובץ מקומי) — כדי לא לאבד עיצובים</span>
     </div>
 
     <details class="psec" data-sec="files" open>
@@ -194,7 +194,15 @@
     </div>
 
 <div class="group">
-      <h2>סוג גודל וכמות</h2>
+      <h2>כמות פנדנטס</h2>
+      <label class="row">כמות (עד 200)
+          <input type="number" id="qty" min="1" max="200" step="1" value="7" style="width:80px">
+        </label>
+      <div id="qtyNote" style="display:none;font-size:11px;color:var(--muted);margin-top:6px;">בחלוקה לפי כמות לכל גודל, הכמות היא סכום הגדלים שמתחת.</div>
+    </div>
+
+<div class="group">
+      <h2>חלוקה לפי גודל</h2>
       <div class="seg" id="mode" style="grid-template-columns:1fr 1fr;">
         <div class="segbtn active" data-m="uniform">גודל אחיד</div>
         <div class="segbtn" data-m="counts">כמות לכל גודל</div>
@@ -202,9 +210,6 @@
 
       <div id="uniformPanel" style="display: block;">
         <div class="sizes" id="sizes" style="margin-top:12px;"><div class="sizebtn" data-k="small"><div class="n">Small</div><div class="d">30 ס"מ</div></div><div class="sizebtn active" data-k="standard"><span class="tag">נפוץ זכ׳</span><div class="n">Standard</div><div class="d">40 ס"מ</div></div><div class="sizebtn" data-k="medium"><div class="n">Medium</div><div class="d">55 ס"מ</div></div><div class="sizebtn" data-k="xl"><span class="tag">נפוץ זכ׳</span><div class="n">XL</div><div class="d">68.6 ס"מ</div></div></div>
-        <label class="row" style="margin-top:12px;">כמות פנדנטס (עד 200)
-          <input type="number" id="qty" min="1" max="200" step="1" value="7" style="width:80px">
-        </label>
       </div>
 
       <div id="countsPanel" style="display:none;margin-top:12px;">
@@ -2231,11 +2236,15 @@ document.querySelectorAll("#mode .segbtn").forEach(b=>{
     b.classList.add("active");state.mode=b.dataset.m;
     document.getElementById("uniformPanel").style.display=state.mode==="uniform"?"block":"none";
     document.getElementById("countsPanel").style.display=state.mode==="counts"?"block":"none";
-    resetOverrides();framedOnce=false;rebuild();};
+    syncQtyField();resetOverrides();framedOnce=false;rebuild();};
 });
 // per-size count inputs
 const countsRows=document.getElementById("countsRows");
-function refreshCtot(){const t=SIZES.reduce((a,s)=>a+(state.counts[s.key]|0),0);document.getElementById("ctot").textContent=t;}
+function refreshCtot(){const t=SIZES.reduce((a,s)=>a+(state.counts[s.key]|0),0);document.getElementById("ctot").textContent=t;syncQtyField();}
+// v245: the quantity field sits above the size split; in "count per size" mode it shows the sum and is read-only
+function syncQtyField(){const q=document.getElementById("qty"),n=document.getElementById("qtyNote");if(!q)return;
+  const counts=state.mode==="counts";q.disabled=counts;if(n)n.style.display=counts?"block":"none";
+  q.value=counts?SIZES.reduce((a,s)=>a+(state.counts[s.key]|0),0):state.qty;}
 function buildCountsRows(){
   countsRows.innerHTML="";
   SIZES.forEach(s=>{
@@ -2259,6 +2268,7 @@ function updateModelUI(){
   // sync panels + mode buttons to the current mode (covers mixed/count models too)
   document.getElementById("uniformPanel").style.display=(state.mode==="counts")?"none":"block";
   document.getElementById("countsPanel").style.display=(state.mode==="counts")?"block":"none";
+  syncQtyField();
   document.querySelectorAll("#mode .segbtn").forEach(x=>x.classList.toggle("active",x.dataset.m===state.mode));
 }
 function setModelInternals(key){
