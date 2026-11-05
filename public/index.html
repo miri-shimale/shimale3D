@@ -104,7 +104,7 @@
     <div id="brand">
       <h1>Sun<b>beam</b></h1>
       <span>BY SHIMAL'E PELEG · מחולל תלת-מימד</span>
-      <span style="display:block;color:var(--accent);font-size:10px;margin-top:3px;">גרסה 246 · גיבוי אוטומטי לקובץ בכל שמירה (מופעל אוטומטית בקובץ מקומי) — כדי לא לאבד עיצובים</span>
+      <span style="display:block;color:var(--accent);font-size:10px;margin-top:3px;">גרסה 247 · גיבוי אוטומטי לקובץ בכל שמירה (מופעל אוטומטית בקובץ מקומי) — כדי לא לאבד עיצובים</span>
     </div>
 
     <details class="psec" data-sec="files" open>
@@ -318,6 +318,18 @@
           <span style="font-size:11px;color:var(--muted);white-space:nowrap;">פאה צרה</span>
         </div>
       </div>
+      <!-- v247: group selection — painting & rotation below apply to every selected unit -->
+      <div id="groupSelBox" style="margin-top:10px;padding:8px;border:1px solid rgba(255,207,107,.45);border-radius:8px;">
+        <div style="font-size:12px;color:var(--text);font-weight:600;margin-bottom:6px;">בחירת קבוצה</div>
+        <div style="font-size:11px;color:#8a8a92;margin-bottom:6px;">Shift / Ctrl + לחיצה על פנדנטים (בתלת-מימד או בעורך הפריסה) מוסיפה או מורידה יחידה מהקבוצה. הצביעה והסיבוב שמתחת חלים על כל הנבחרות.</div>
+        <label class="check" style="font-size:12px;"><input type="checkbox" id="groupMode"> בחירה מרובה — כל לחיצה מוסיפה/מורידה (בלי Shift)</label>
+        <div style="display:flex;gap:6px;margin-top:6px;">
+          <button class="btn" id="groupAll" style="flex:1;">בחר הכל</button>
+          <button class="btn" id="groupSameColor" style="flex:1;" title="בוחר את כל היחידות בצבע של היחידה שנבחרה">אותו צבע</button>
+          <button class="btn" id="groupClear" style="flex:1;">נקה</button>
+        </div>
+        <div id="groupSelStatus" style="font-size:11px;color:var(--accent);margin-top:6px;">לא נבחרה קבוצה.</div>
+      </div>
       <!-- per-unit painting — works on top of BOTH modes (unit-by-unit base, or the by-count mix) -->
       <div id="unitColorBox" style="margin-top:10px;padding:8px;border:1px dashed var(--line);border-radius:8px;">
           <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">צביעת יחידה</div>
@@ -332,8 +344,8 @@
             <select id="unitNarrowSel" style="flex:1;"><option value="" data-name="">— כמו הפאה הרחבה —</option></select>
             <span style="font-size:11px;color:var(--muted);white-space:nowrap;">פאה צרה</span>
           </div>
-          <button class="btn" id="unitColorApply">🎨 צבע את היחידה הנבחרת</button>
-          <button class="btn" id="unitColorClearOne" style="margin-top:4px;">↺ בטל צביעה ליחידה הנבחרת</button>
+          <button class="btn" id="unitColorApply">🎨 צבע את הנבחרות</button>
+          <button class="btn" id="unitColorClearOne" style="margin-top:4px;">↺ בטל צביעה לנבחרות</button>
           <button class="btn" id="unitColorClearAll" style="margin-top:4px;">🧹 בטל את כל צביעות היחידות</button>
           <div id="unitColorStatus" style="font-size:11px;color:var(--accent);margin-top:6px;"></div>
         </div>
@@ -351,7 +363,7 @@
           <option value="wide">כולן — צד רחב לצופה</option>
           <option value="narrow">כולן — צד צר לצופה</option>
         </select>
-        <div style="font-size:11px;color:#8a8a92;margin-bottom:6px;">ליחידה בודדת: בחרי פנדנט בתלת-מימד ואז:</div>
+        <div style="font-size:11px;color:#8a8a92;margin-bottom:6px;">ליחידה או לקבוצה: בחרי פנדנט/ים ואז:</div>
         <div style="display:flex;gap:6px;margin-bottom:6px;">
           <button class="btn" id="unitOriWide" style="flex:1;">רחב</button>
           <button class="btn" id="unitOriNarrow" style="flex:1;">צר</button>
@@ -1400,6 +1412,7 @@ function rebuild(){
   updateReadout();
   if(typeof updateLayoutMode==="function")updateLayoutMode();
   if(!framedOnce){ fitTo(); framedOnce=true; }
+  if(typeof refreshGroupRings==="function" && typeof multiSel!=="undefined") refreshGroupRings();
   if(typeof autoSave==="function")autoSave();
 }
 
@@ -1599,10 +1612,36 @@ function updateSelRing(){
   selRing.scale.set(R,R,1);
   selRing.position.set(selUnit.position.x, selUnit.position.y+1.6, selUnit.position.z);
   selRing.visible=true;
+  if(typeof refreshGroupRings==="function" && multiSel && multiSel.size) refreshGroupRings();
 }
 function selectUnit(u){selUnit=u;updateSelRing();showSelHint(true);mirrorToPlan(u);
   { const st=document.getElementById("unitColorStatus"); if(st&&u) st.innerHTML=unitColorHTML(u); }}
 function deselect(){selUnit=null;selRing.visible=false;showSelHint(false);mirrorToPlan(null);}
+// ---- v247: group selection (Set of unit indices; survives rebuilds) ----
+var multiSel=new Set(), groupRings=[];
+function unitByIndex(idx){ let f=null; fixtures.traverse(o=>{ if(o.userData&&o.userData.index===idx&&o.userData.pickable) f=o; }); return f; }
+function allUnits(){ const a=[]; fixtures.traverse(o=>{ if(o.userData&&o.userData.pickable&&o.userData.index!==undefined) a.push(o); }); return a; }
+function isMulti(u){ return !!(u&&u.userData&&multiSel.has(u.userData.index)); }
+function groupModifier(e){ const gm=document.getElementById("groupMode"); return !!(e&&(e.shiftKey||e.ctrlKey||e.metaKey)) || !!(gm&&gm.checked); }
+function refreshGroupRings(){
+  const units=allUnits(), have=new Set(units.map(u=>u.userData.index));
+  [...multiSel].forEach(i=>{ if(!have.has(i)) multiSel.delete(i); });          // drop indices that no longer exist
+  const sel=units.filter(u=>multiSel.has(u.userData.index));
+  while(groupRings.length<sel.length){ const r=selRing.clone(); r.material=selRing.material.clone(); r.material.color.set(0x6bb8ff); scene.add(r); groupRings.push(r); }
+  const R=Math.max(state.cw,state.cd)*0.75+1.5;
+  groupRings.forEach((r,k)=>{ const u=sel[k]; r.visible=!!u; if(u){ r.scale.set(R,R,1); r.position.set(u.position.x,u.position.y+1.6,u.position.z); } });
+  const st=document.getElementById("groupSelStatus");
+  if(st){ const ids=sel.map(u=>u.userData.index+1).sort((a,b)=>a-b);
+    st.textContent = ids.length ? ("נבחרו "+ids.length+" יחידות: #"+(ids.length>24?ids.slice(0,24).join(", #")+" …":ids.join(", #"))) : "לא נבחרה קבוצה."; }
+  if(typeof planEl!=="undefined"&&planEl&&planEl.style.display!=="none"&&typeof drawPlan==="function") drawPlan();
+}
+function toggleGroup(u){
+  if(!u) return;
+  if(selUnit && selUnit!==u && !multiSel.size) multiSel.add(selUnit.userData.index);   // a single selection becomes the first member
+  const i=u.userData.index; multiSel.has(i)?multiSel.delete(i):multiSel.add(i);
+  deselect(); refreshGroupRings();
+}
+function clearGroup(){ if(!multiSel.size) return; multiSel.clear(); refreshGroupRings(); }
 // reflect a 3D selection into the plan-editor window (bidirectional highlight)
 function mirrorToPlan(u){
   if(typeof planSel==="undefined")return;
@@ -1634,6 +1673,7 @@ el.addEventListener("mousedown",e=>{
   downX=e.clientX; downY=e.clientY;
   if(e.button===0){
     const p=pickUnit(e.clientX,e.clientY);
+    if(p && groupModifier(e)){ lx=e.clientX; ly=e.clientY; return; }   // v247: group toggle happens on mouseup
     if(p){dragUnit=p.unit;state.spin=false;lx=e.clientX;ly=e.clientY;el.style.cursor="grabbing";
       // a VERTICAL plane facing the camera, through the grab point → lets the body follow the cursor
       // sideways (X/Z) AND up/down (raise/lower the drop)
@@ -1652,10 +1692,12 @@ window.addEventListener("mouseup",e=>{
   if(!click) return;                          // was a drag/orbit, not a click
   if(e.button!==0) return;
   const p=pickUnit(e.clientX,e.clientY);
-  if(p){ selUnit===p.unit ? deselect() : selectUnit(p.unit); }
+  if(p && groupModifier(e)){ toggleGroup(p.unit); return; }
+  if(p){ clearGroup(); selUnit===p.unit ? deselect() : selectUnit(p.unit); }
   else if(selUnit){ placeSelectedAt(e.clientX,e.clientY); }
+  else if(multiSel.size && !groupModifier(e)){ clearGroup(); }
 });
-window.addEventListener("keydown",e=>{if(e.key==="Escape")deselect();});
+window.addEventListener("keydown",e=>{if(e.key==="Escape"){deselect();clearGroup();}});
 // ---- unit colour info (hover tooltip + selection status) ----
 function glassInfo(hx){ const H=(hx||"").toUpperCase(); const g=(typeof GLASS!=="undefined"?GLASS:[]).find(g=>(g.h||"").toUpperCase()===H);
   return g ? {code:g.c||"", name:g.n, hex:g.h} : {code:"", name:(H===(state.glassHex||"").toUpperCase()?(state.glassName||hx):hx), hex:hx}; }
@@ -2428,60 +2470,71 @@ function reselectIndex(idx){
   let found=null; fixtures.traverse(o=>{ if(o.userData&&o.userData.index===idx&&o.userData.pickable) found=o; });
   if(found && typeof selectUnit==="function") selectUnit(found);
 }
+function selectedIndices(){
+  if(typeof multiSel!=="undefined" && multiSel.size) return [...multiSel].sort((a,b)=>a-b);
+  const i=selectedUnitIndex(); return i==null?[]:[i];
+}
+function reselectAfter(ids){ if(multiSel.size) refreshGroupRings(); else if(ids.length===1) reselectIndex(ids[0]); }
 function setUnitColorStatus(m){ const el=document.getElementById("unitColorStatus"); if(el) el.textContent=m||""; }
 // ---- orientation control: global default + per-unit rotation override ----
 {
   const fo=document.getElementById("faceOrient");
   if(fo){ fo.onchange=()=>{ state.faceOrient=fo.value; rebuild(); if(typeof autoSave==="function")autoSave(); }; }
   const oStat=(m)=>{ const el=document.getElementById("orientStatus"); if(el) el.textContent=m||""; };
-  const setRy=(ry,label)=>{
-    const idx=selectedUnitIndex();
-    if(idx==null){ oStat("בחרי יחידה קודם — לחיצה על פנדנט בתלת-מימד."); return; }
+  const setRy=(ryFor,label)=>{                       // v247: ryFor(unit) → angle, applied to every selected unit
+    const ids=selectedIndices();
+    if(!ids.length){ oStat("בחרי יחידה או קבוצה קודם — לחיצה על פנדנט בתלת-מימד."); return; }
     if(typeof pushHistory==="function") pushHistory();
-    state.overrides=state.overrides||{}; state.overrides[idx]=state.overrides[idx]||{dx:0,dz:0};
-    if(ry==null) delete state.overrides[idx].ry; else state.overrides[idx].ry=ry;
-    rebuild(); reselectIndex(idx); oStat(label); if(typeof autoSave==="function")autoSave();
+    state.overrides=state.overrides||{};
+    ids.forEach(idx=>{ const ry=ryFor(unitByIndex(idx)); state.overrides[idx]=state.overrides[idx]||{dx:0,dz:0};
+      if(ry==null) delete state.overrides[idx].ry; else state.overrides[idx].ry=ry; });
+    rebuild(); reselectAfter(ids); oStat((ids.length>1?ids.length+" יחידות — ":"")+label); if(typeof autoSave==="function")autoSave();
   };
-  const wideRotFor=()=>{ if(!selUnit)return 0; const w=selUnit.userData.w,cd=(selUnit.userData.cd!=null?selUnit.userData.cd:w); return (w>cd)?Math.PI/2:0; };
-  const narrowRotFor=()=>{ if(!selUnit)return Math.PI/2; const w=selUnit.userData.w,cd=(selUnit.userData.cd!=null?selUnit.userData.cd:w); return (w>cd)?0:Math.PI/2; };
+  const dims=u=>{ const w=u&&u.userData.w, cd=(u&&u.userData.cd!=null)?u.userData.cd:w; return [w,cd]; };
+  const wideRotFor=u=>{ if(!u)return 0; const [w,cd]=dims(u); return (w>cd)?Math.PI/2:0; };
+  const narrowRotFor=u=>{ if(!u)return Math.PI/2; const [w,cd]=dims(u); return (w>cd)?0:Math.PI/2; };
   const uw=document.getElementById("unitOriWide"), un=document.getElementById("unitOriNarrow"), ur=document.getElementById("unitOriReset");
-  if(uw) uw.onclick=()=>setRy(wideRotFor(),"היחידה מוצגת מהצד הרחב.");
-  if(un) un.onclick=()=>setRy(narrowRotFor(),"היחידה מוצגת מהצד הצר.");
-  if(ur) ur.onclick=()=>setRy(null,"הכיוון חזר לאוטומטי.");
+  if(uw) uw.onclick=()=>setRy(wideRotFor,"מוצג מהצד הרחב.");
+  if(un) un.onclick=()=>setRy(narrowRotFor,"מוצג מהצד הצר.");
+  if(ur) ur.onclick=()=>setRy(()=>null,"הכיוון חזר לאוטומטי.");
   const ang=document.getElementById("unitOriAngle"), angV=document.getElementById("unitOriAngleVal");
-  if(ang){ ang.oninput=()=>{ if(angV)angV.textContent=ang.value+"°"; setRy(parseFloat(ang.value)*Math.PI/180,"סיבוב "+ang.value+"°"); }; }
+  if(ang){ ang.oninput=()=>{ if(angV)angV.textContent=ang.value+"°"; const a=parseFloat(ang.value)*Math.PI/180; setRy(()=>a,"סיבוב "+ang.value+"°"); }; }
 }
 document.getElementById("unitColorApply").onclick=()=>{
-  const idx=selectedUnitIndex();
-  if(idx==null){ setUnitColorStatus("בחרי יחידה קודם — לחיצה על פנדנט בתלת-מימד או בעורך הפריסה."); return; }
+  const ids=selectedIndices();
+  if(!ids.length){ setUnitColorStatus("בחרי יחידה או קבוצה קודם — לחיצה על פנדנט בתלת-מימד או בעורך הפריסה."); return; }
   if(typeof pushHistory==="function") pushHistory();
   state.glassOverrides=state.glassOverrides||{};
   const faceOn=(state.shape==="rect"||state.shape==="square") && !!state.faceSplit && !!unitNarrowSel.value
                && unitNarrowSel.value.toUpperCase()!==unitColorSel.value.toUpperCase();
+  const who=ids.length>1?(ids.length+" יחידות"):("יחידה #"+(ids[0]+1));
   let msg;
   if(faceOn){
     const wo=unitColorSel.selectedOptions[0], no=unitNarrowSel.selectedOptions[0];
-    state.glassOverrides[idx]={wide:unitColorSel.value, narrow:unitNarrowSel.value};
-    msg="יחידה #"+(idx+1)+" — רחבות: "+(wo?wo.dataset.name:"")+" · צרות: "+(no?no.dataset.name:"")+".";
+    ids.forEach(idx=>{ state.glassOverrides[idx]={wide:unitColorSel.value, narrow:unitNarrowSel.value}; });
+    msg=who+" — רחבות: "+(wo?wo.dataset.name:"")+" · צרות: "+(no?no.dataset.name:"")+".";
   }else{
     const o=unitColorSel.selectedOptions[0], hex=unitColorSel.value, nm=o?o.dataset.name:hex;
-    state.glassOverrides[idx]=hex;
-    msg="יחידה #"+(idx+1)+" נצבעה — "+nm+".";
+    ids.forEach(idx=>{ state.glassOverrides[idx]=hex; });
+    msg=who+(ids.length>1?" נצבעו — ":" נצבעה — ")+nm+".";
   }
-  rebuild(); reselectIndex(idx);
+  rebuild(); reselectAfter(ids);
   setUnitColorStatus(msg);
   if(typeof autoSave==="function") autoSave();
 };
 document.getElementById("unitColorClearOne").onclick=()=>{
-  const idx=selectedUnitIndex();
-  if(idx==null){ setUnitColorStatus("בחרי יחידה קודם — לחיצה על פנדנט עד שמופיע העיגול סביבו."); return; }
-  const had = state.glassOverrides && state.glassOverrides[idx]!==undefined;
+  const ids=selectedIndices();
+  if(!ids.length){ setUnitColorStatus("בחרי יחידה או קבוצה קודם — לחיצה על פנדנט עד שמופיע העיגול סביבו."); return; }
   if(typeof pushHistory==="function") pushHistory();
-  if(state.glassOverrides) delete state.glassOverrides[idx];
-  if(state.glassMode!=="counts" && state.lockSnap && state.lockSnap[idx]) state.lockSnap[idx].glass=state.glassHex;  // unit mode: revert baked colour if locked
-  rebuild(); reselectIndex(idx);
-  setUnitColorStatus(had ? ("הצביעה האישית של יחידה #"+(idx+1)+" בוטלה.")
-                         : ("ליחידה #"+(idx+1)+" אין צביעה אישית — הצבע מגיע מהתמהיל הכללי (כמויות/צבע בסיס)."));
+  let had=0;
+  ids.forEach(idx=>{
+    if(state.glassOverrides && state.glassOverrides[idx]!==undefined){ had++; delete state.glassOverrides[idx]; }
+    if(state.glassMode!=="counts" && state.lockSnap && state.lockSnap[idx]) state.lockSnap[idx].glass=state.glassHex;  // unit mode: revert baked colour if locked
+  });
+  rebuild(); reselectAfter(ids);
+  setUnitColorStatus(ids.length>1 ? ("בוטלה צביעה אישית ל־"+had+" מתוך "+ids.length+" יחידות.")
+    : (had ? ("הצביעה האישית של יחידה #"+(ids[0]+1)+" בוטלה.")
+           : ("ליחידה #"+(ids[0]+1)+" אין צביעה אישית — הצבע מגיע מהתמהיל הכללי (כמויות/צבע בסיס).")));
   if(typeof autoSave==="function") autoSave();
 };
 document.getElementById("unitColorClearAll").onclick=()=>{
@@ -2492,6 +2545,20 @@ document.getElementById("unitColorClearAll").onclick=()=>{
   setUnitColorStatus("כל צביעות היחידות בוטלו — כולן בצבע הבסיס.");
   if(typeof autoSave==="function") autoSave();
 };
+// v247: group selection buttons
+{
+  const uCol=u=>((u.userData.glassW||u.userData.glass||state.glassHex||"")+"|"+(u.userData.glassN||"")).toUpperCase();
+  document.getElementById("groupAll").onclick=()=>{ deselect(); allUnits().forEach(u=>multiSel.add(u.userData.index)); refreshGroupRings(); };
+  document.getElementById("groupClear").onclick=()=>{ deselect(); multiSel.clear(); refreshGroupRings(); };
+  document.getElementById("groupSameColor").onclick=()=>{
+    const ref = selUnit || (typeof planSel!=="undefined"&&planSel) || (multiSel.size?unitByIndex([...multiSel][0]):null);
+    const st=document.getElementById("groupSelStatus");
+    if(!ref){ if(st) st.textContent="בחרי קודם יחידה אחת בצבע הרצוי, ואז \"אותו צבע\"."; return; }
+    const key=uCol(ref); deselect(); multiSel.clear();
+    allUnits().forEach(u=>{ if(uCol(u)===key) multiSel.add(u.userData.index); });
+    refreshGroupRings();
+  };
+}
 // glass "count per colour" mode
 function refreshGlassTotals(){
   const t=(state.glassCounts||[]).reduce((a,g)=>a+(g.count|0),0);
@@ -2843,7 +2910,7 @@ function drawPlan(){
     // pendants as vertical bars + cables
     planUnits.forEach(u=>{const px=planCx+axf(u)*planScale, ty=planTopY+(-u.position.y)*planScale, bh=(u.userData.h||0)*planScale, bw=Math.max(6,bodyW*planScale);
       pctx.strokeStyle="#3a3a42";pctx.lineWidth=0.6;pctx.beginPath();pctx.moveTo(px,planTopY);pctx.lineTo(px,ty);pctx.stroke();
-      pctx.fillStyle=state.glassHex; pctx.strokeStyle=(u===planSel)?"#ffcf6b":"#2f2f36"; pctx.lineWidth=(u===planSel)?2.5:1;
+      pctx.fillStyle=state.glassHex; pctx.strokeStyle=(u===planSel)?"#ffcf6b":(isMulti(u)?"#6bb8ff":"#2f2f36"); pctx.lineWidth=(u===planSel||isMulti(u))?2.5:1;
       pctx.fillRect(px-bw/2,ty,bw,bh); pctx.strokeRect(px-bw/2,ty,bw,bh);});
   } else {
     if(!planDrag){                                   // FREEZE the transform while dragging (top view)
@@ -2857,7 +2924,7 @@ function drawPlan(){
     else if(state.canopy!=="none"){const hw=(state._cHW||10)*planScale,hl=(state._cHL||10)*planScale;pctx.strokeRect(planCx-hw,planCy-hl,hw*2,hl*2);}
     pctx.strokeStyle="#2a2a30";pctx.beginPath();pctx.moveTo(planCx-9,planCy);pctx.lineTo(planCx+9,planCy);pctx.moveTo(planCx,planCy-9);pctx.lineTo(planCx,planCy+9);pctx.stroke();
     planUnits.forEach(u=>{const x=planCx+u.position.x*planScale, y=planCy+u.position.z*planScale, w=Math.max(7,state.cw*planScale), h=Math.max(7,state.cd*planScale);
-      pctx.fillStyle=state.glassHex; pctx.strokeStyle=(u===planSel)?"#ffcf6b":"#2f2f36"; pctx.lineWidth=(u===planSel)?2.5:1;
+      pctx.fillStyle=state.glassHex; pctx.strokeStyle=(u===planSel)?"#ffcf6b":(isMulti(u)?"#6bb8ff":"#2f2f36"); pctx.lineWidth=(u===planSel||isMulti(u))?2.5:1;
       pctx.fillRect(x-w/2,y-h/2,w,h); pctx.strokeRect(x-w/2,y-h/2,w,h);});
   }
 }
@@ -2882,7 +2949,8 @@ function movePlanTo(u,px,py){
 // highlight the same pendant in the 3D body so it's clear what's being moved
 function markInBody(u){ if(typeof selUnit==="undefined")return; selUnit=u; if(typeof updateSelRing==="function")updateSelRing(); }
 planCv.addEventListener("pointerdown",e=>{planCv.setPointerCapture(e.pointerId);const p=planEvt(e);const u=planPick(p.x,p.y);
-  if(u){pushHistory();planDrag=u;planSel=u;markInBody(u);}
+  if(u && groupModifier(e)){ planSel=null; toggleGroup(u); drawPlan(); return; }   // v247
+  if(u){ clearGroup();pushHistory();planDrag=u;planSel=u;markInBody(u);}
   else if(planSel){pushHistory();movePlanTo(planSel,p.x,p.y);markInBody(planSel);}   // two-point: place selected at target
   drawPlan();});
 planCv.addEventListener("pointermove",e=>{if(!planDrag){ const p=planEvt(e), u=planPick(p.x,p.y); showUnitTip(u,e.clientX,e.clientY); return; } showUnitTip(null); const p=planEvt(e);movePlanTo(planDrag,p.x,p.y);drawPlan();});
