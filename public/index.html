@@ -104,7 +104,7 @@
     <div id="brand">
       <h1>Sun<b>beam</b></h1>
       <span>BY SHIMAL'E PELEG · מחולל תלת-מימד</span>
-      <span style="display:block;color:var(--accent);font-size:10px;margin-top:3px;">גרסה 247 · גיבוי אוטומטי לקובץ בכל שמירה (מופעל אוטומטית בקובץ מקומי) — כדי לא לאבד עיצובים</span>
+      <span style="display:block;color:var(--accent);font-size:10px;margin-top:3px;">גרסה 248 · גיבוי אוטומטי לקובץ בכל שמירה (מופעל אוטומטית בקובץ מקומי) — כדי לא לאבד עיצובים</span>
     </div>
 
     <details class="psec" data-sec="files" open>
@@ -357,7 +357,7 @@
         <span id="unitWideSw"></span><select id="unitWideSel"></select>
       </div>
       <div id="orientBox" style="margin-top:10px;padding:8px;border:1px dashed var(--line);border-radius:8px;">
-        <div style="font-size:12px;color:var(--muted);margin-bottom:6px;">כיוון היחידות מול הגוף</div>
+        <div id="orientTitle" style="font-size:12px;color:var(--muted);margin-bottom:6px;">כיוון היחידות מול הגוף</div>
         <select id="faceOrient" style="width:100%;margin-bottom:6px;">
           <option value="vary">מגוון · טבעי (ברירת מחדל)</option>
           <option value="wide">כולן — צד רחב לצופה</option>
@@ -369,7 +369,7 @@
           <button class="btn" id="unitOriNarrow" style="flex:1;">צר</button>
           <button class="btn" id="unitOriReset" style="flex:1;">איפוס</button>
         </div>
-        <label class="row" style="font-size:12px;">סיבוב חופשי°
+        <label class="row" id="unitOriAngleRow" style="font-size:12px;">סיבוב חופשי°
           <input type="range" id="unitOriAngle" min="0" max="180" step="5" value="0" style="width:120px;">
           <span id="unitOriAngleVal" style="font-size:11px;color:var(--muted);">0°</span>
         </label>
@@ -1275,6 +1275,7 @@ function computeDrops(pos,n,rng){
   return norm(dr);
 }
 function rebuild(){
+  if(typeof window.updOrientUI==="function") window.updOrientUI();
   if(typeof selUnit!=="undefined"){selUnit=null;if(selRing)selRing.visible=false;showSelHint(false);}
   while(fixtures.children.length)fixtures.remove(fixtures.children[0]);
   const rng=mulberry(state.seed);
@@ -1373,6 +1374,15 @@ function rebuild(){
       if(ov && ov.ry!=null) f.rotation.y=ov.ry;
       else if(state.faceOrient==="wide") f.rotation.y=_wideRot;
       else if(state.faceOrient==="narrow") f.rotation.y=_narrowRot;
+    }
+    // v248: Bivalvia is a camera-facing photo — yaw does nothing, so "orientation" = mirror the shell (opening right/left)
+    if(state.shape==="shell"){
+      const flip = (ov && ov.flip!=null) ? !!ov.flip
+                 : state.faceOrient==="wide" ? false
+                 : state.faceOrient==="narrow" ? true
+                 : (((i*2654435761)>>>0)%100)<50;            // "vary": natural mix of both directions
+      f.traverse(o=>{ if(o.isSprite) o.scale.x=Math.abs(o.scale.x)*(flip?-1:1); });
+      unit.userData.flip=flip;
     }
     unit.add(f);
     unit.position.set(px, -cable, pz);         // pendant top hangs `cable` below the plate
@@ -2479,7 +2489,7 @@ function setUnitColorStatus(m){ const el=document.getElementById("unitColorStatu
 // ---- orientation control: global default + per-unit rotation override ----
 {
   const fo=document.getElementById("faceOrient");
-  if(fo){ fo.onchange=()=>{ state.faceOrient=fo.value; rebuild(); if(typeof autoSave==="function")autoSave(); }; }
+  if(fo){ fo.onchange=()=>{ if(typeof pushHistory==="function")pushHistory(); state.faceOrient=fo.value; rebuild(); if(typeof autoSave==="function")autoSave(); }; }
   const oStat=(m)=>{ const el=document.getElementById("orientStatus"); if(el) el.textContent=m||""; };
   const setRy=(ryFor,label)=>{                       // v247: ryFor(unit) → angle, applied to every selected unit
     const ids=selectedIndices();
@@ -2494,9 +2504,31 @@ function setUnitColorStatus(m){ const el=document.getElementById("unitColorStatu
   const wideRotFor=u=>{ if(!u)return 0; const [w,cd]=dims(u); return (w>cd)?Math.PI/2:0; };
   const narrowRotFor=u=>{ if(!u)return Math.PI/2; const [w,cd]=dims(u); return (w>cd)?0:Math.PI/2; };
   const uw=document.getElementById("unitOriWide"), un=document.getElementById("unitOriNarrow"), ur=document.getElementById("unitOriReset");
-  if(uw) uw.onclick=()=>setRy(wideRotFor,"מוצג מהצד הרחב.");
-  if(un) un.onclick=()=>setRy(narrowRotFor,"מוצג מהצד הצר.");
-  if(ur) ur.onclick=()=>setRy(()=>null,"הכיוון חזר לאוטומטי.");
+  const isShell=()=>state.shape==="shell";
+  const setFlip=(fl,label)=>{                        // v248: shells — mirror instead of rotate (every selected unit)
+    const ids=selectedIndices();
+    if(!ids.length){ oStat("בחרי יחידה או קבוצה קודם — לחיצה על קונכייה בתלת-מימד."); return; }
+    if(typeof pushHistory==="function") pushHistory();
+    state.overrides=state.overrides||{};
+    ids.forEach(idx=>{ state.overrides[idx]=state.overrides[idx]||{dx:0,dz:0};
+      if(fl==null) delete state.overrides[idx].flip; else state.overrides[idx].flip=fl; delete state.overrides[idx].ry; });
+    rebuild(); reselectAfter(ids); oStat((ids.length>1?ids.length+" יחידות — ":"")+label); if(typeof autoSave==="function")autoSave();
+  };
+  if(uw) uw.onclick=()=>isShell()?setFlip(false,"פתח ימינה."):setRy(wideRotFor,"מוצג מהצד הרחב.");
+  if(un) un.onclick=()=>isShell()?setFlip(true,"פתח שמאלה."):setRy(narrowRotFor,"מוצג מהצד הצר.");
+  if(ur) ur.onclick=()=>isShell()?setFlip(null,"הכיוון חזר לאוטומטי."):setRy(()=>null,"הכיוון חזר לאוטומטי.");
+  window.updOrientUI=()=>{                           // relabel the box for shells (called from rebuild)
+    const sh=isShell(), t=document.getElementById("orientTitle"), ar=document.getElementById("unitOriAngleRow");
+    if(t) t.textContent = sh ? "כיוון הקונכיות (פתח ימינה / שמאלה)" : "כיוון היחידות מול הגוף";
+    if(uw) uw.textContent = sh ? "פתח ימינה" : "רחב";
+    if(un) un.textContent = sh ? "פתח שמאלה" : "צר";
+    if(ar) ar.style.display = sh ? "none" : "";
+    if(fo){ const o=fo.options;
+      if(o[0]) o[0].textContent = sh ? "מגוון · טבעי (ימינה ושמאלה)" : "מגוון · טבעי (ברירת מחדל)";
+      if(o[1]) o[1].textContent = sh ? "כולן — פתח ימינה" : "כולן — צד רחב לצופה";
+      if(o[2]) o[2].textContent = sh ? "כולן — פתח שמאלה" : "כולן — צד צר לצופה"; }
+  };
+  updOrientUI();
   const ang=document.getElementById("unitOriAngle"), angV=document.getElementById("unitOriAngleVal");
   if(ang){ ang.oninput=()=>{ if(angV)angV.textContent=ang.value+"°"; const a=parseFloat(ang.value)*Math.PI/180; setRy(()=>a,"סיבוב "+ang.value+"°"); }; }
 }
