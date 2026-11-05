@@ -104,7 +104,7 @@
     <div id="brand">
       <h1>Sun<b>beam</b></h1>
       <span>BY SHIMAL'E PELEG · מחולל תלת-מימד</span>
-      <span style="display:block;color:var(--accent);font-size:10px;margin-top:3px;">גרסה 245 · גיבוי אוטומטי לקובץ בכל שמירה (מופעל אוטומטית בקובץ מקומי) — כדי לא לאבד עיצובים</span>
+      <span style="display:block;color:var(--accent);font-size:10px;margin-top:3px;">גרסה 246 · גיבוי אוטומטי לקובץ בכל שמירה (מופעל אוטומטית בקובץ מקומי) — כדי לא לאבד עיצובים</span>
     </div>
 
     <details class="psec" data-sec="files" open>
@@ -194,6 +194,15 @@
     </div>
 
 <div class="group">
+      <h2>גימור פלטה ומתכת</h2>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span id="finishSw" style="width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--line); flex: 0 0 auto; background: rgb(236, 236, 236);"></span>
+        <select id="finish" style="flex:1;"></select>
+      </div>
+      <div id="finishNote" style="font-size: 11px; color: var(--accent); margin-top: 6px; display: block;">נירוסטה / ניקל-מוברש אינם זמינים בפלטה עגולה.</div>
+    </div>
+
+<div class="group">
       <h2>כמות פנדנטס</h2>
       <label class="row">כמות (עד 200)
           <input type="number" id="qty" min="1" max="200" step="1" value="7" style="width:80px">
@@ -264,14 +273,7 @@
       <div style="font-size:11px;color:var(--muted);margin-top:4px;">קובע את הצללית הכללית: אקראי = פיזור טבעי; פירמידה = היחידות באמצע יורדות הכי נמוך; קערה = הקצוות יורדים; מפל = ירידה אלכסונית מצד לצד; ספירלה = הגובה יורד בהדרגה סביב המרכז, כמו גרם מדרגות לולייני.</div>
     </div>
 
-<div class="group">
-      <h2>גימור פלטה ומתכת</h2>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span id="finishSw" style="width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--line); flex: 0 0 auto; background: rgb(236, 236, 236);"></span>
-        <select id="finish" style="flex:1;"></select>
-      </div>
-      <div id="finishNote" style="font-size: 11px; color: var(--accent); margin-top: 6px; display: block;">נירוסטה / ניקל-מוברש אינם זמינים בפלטה עגולה.</div>
-    </div>
+
       <!-- v243: "גובה מותאם" and "מרווח" removed from the UI; kept hidden so existing code paths & saved designs keep working -->
       <div style="display:none;">
         <label class="row" style="margin-top:12px;">גובה מותאם (<span id="customHU">ס"מ</span>)
